@@ -25,6 +25,8 @@ It's not a full replacement for Anubis, but most of the features are there.
 
 Check [Caddyfile](Caddyfile) for an example configuration.
 
+*WARNING*: Each cerberus directive will create a new instance of the handler. This means that if you have multiple cerberus directives, each one will have its own internal state and consume memory. Please use the `cerberus` directive only once per site.
+
 ## Development
 
 If you modified the js file, you need to run the following command to rebundle the js file:
