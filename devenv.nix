@@ -1,16 +1,12 @@
-{ pkgs, lib, config, inputs, ... }:
+{ pkgs, ... }:
 
-let
-  pkgs-unstable = import inputs.nixpkgs-unstable { system = pkgs.stdenv.system; };
-in
 {
   # https://devenv.sh/packages/
-  packages = with pkgs-unstable; [ git xcaddy templ esbuild golangci-lint ];
+  packages = with pkgs; [ git xcaddy templ esbuild golangci-lint ];
 
   # https://devenv.sh/languages/
   languages.go = {
     enable = true;
-    package = pkgs-unstable.go;
     enableHardeningWorkaround = true;
   };
 
