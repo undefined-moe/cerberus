@@ -9,7 +9,7 @@ It's not a full replacement for Anubis, but most of the features are there.
 
 1. Install Caddy with the plugin:
    ```bash
-   caddy add-package github.com/lightquantum/caddy-cerberus
+   caddy add-package github.com/sjtug/cerberus
    ```
 2. Add the handler directive to your Caddyfile. Refer to the [Caddyfile](Caddyfile) for an example configuration.
 
