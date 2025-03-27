@@ -20,7 +20,7 @@ localhost {
 		# When set to true, the handler will drop the connection instead of returning a 403 if the IP is blocked.
 		# drop
 		# MaxPending is the maximum number of pending (and failed) requests.
-		# Any IP block (/24 or /64) with more than this number of pending requests will be blocked.
+		# Any IP block (prefix configured in prefix_cfg) with more than this number of pending requests will be blocked.
 		max_pending 128
 		# BlockTTL is the time to live for blocked IPs.
 		block_ttl "24h"
@@ -36,6 +36,9 @@ localhost {
 		title "Cerberus Challenge"
 		# Description is the description of the challenge page.
 		description "Making sure you're not a bot!"
+        # PrefixCfg is to configure prefixes used to block users in these IP prefix blocks, e.g., /24 /64.
+        # The first argument is for IPv4 and the second is for IPv6.
+        prefix_cfg 20 64
 	}
 
 	handle / {

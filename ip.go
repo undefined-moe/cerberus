@@ -14,18 +14,27 @@ type IPBlock struct {
 	data uint64
 }
 
+// IPBlockConfig represents the configuration for an IPBlock.
+// It's used to specify the prefix length for IPv4 and IPv6 blocks for IP blocking.
 type IPBlockConfig struct {
-	v4Prefix int
-	v6Prefix int
+	// V4Prefix is the prefix length for IPv4 blocks
+	V4Prefix int `json:"v4_prefix"`
+	// V6Prefix is the prefix length for IPv6 blocks
+	V6Prefix int `json:"v6_prefix"`
 }
 
 func (c IPBlockConfig) IsEmpty() bool {
-	return c.v4Prefix == 0 && c.v6Prefix == 0
+	return c.V4Prefix == 0 && c.V6Prefix == 0
 }
 
-func ValidateIPBlockConfig(cfg IPBlockConfig) bool {
-	// Due to uint64 size limitation, we only allow at most /64 for IPv6
-	return cfg.v4Prefix <= 32 && cfg.v6Prefix <= 64
+func ValidateIPBlockConfig(cfg IPBlockConfig) error {
+	if cfg.V4Prefix > 32 || cfg.V4Prefix < 1 {
+		return fmt.Errorf("v4_prefix must be between 1 and 32, got %d", cfg.V4Prefix)
+	} else if cfg.V6Prefix > 64 || cfg.V6Prefix < 1 {
+		// Due to uint64 size limitation, we only allow at most /64 for IPv6
+		return fmt.Errorf("v6_prefix must be between 1 and 64, got %d", cfg.V6Prefix)
+	}
+	return nil
 }
 
 // NewIPBlock creates a new IPBlock from an IP address
@@ -36,7 +45,7 @@ func NewIPBlock(ip net.IP, cfg IPBlockConfig) (IPBlock, error) {
 
 	ip4 := ip.To4()
 	if ip4 != nil {
-		ip4 = ip4.Mask(net.CIDRMask(cfg.v4Prefix, 32))
+		ip4 = ip4.Mask(net.CIDRMask(cfg.V4Prefix, 32))
 		return IPBlock{
 			data: 0x20010db800000000 | uint64(ip4[0])<<24 | uint64(ip4[1])<<16 | uint64(ip4[2])<<8 | uint64(ip4[3]),
 		}, nil
@@ -46,7 +55,7 @@ func NewIPBlock(ip net.IP, cfg IPBlockConfig) (IPBlock, error) {
 	if ip6 == nil {
 		return IPBlock{}, fmt.Errorf("invalid IP: %v", ip)
 	}
-	ip6 = ip6.Mask(net.CIDRMask(cfg.v6Prefix, 128))
+	ip6 = ip6.Mask(net.CIDRMask(cfg.V6Prefix, 128))
 	data := uint64(0)
 	for i := 0; i < 8; i++ {
 		data = data<<8 | uint64(ip6[i])
@@ -58,7 +67,7 @@ func (b IPBlock) ToIPNet(cfg IPBlockConfig) *net.IPNet {
 	if b.data&0xffffffff00000000 == 0x20010db800000000 {
 		return &net.IPNet{
 			IP:   net.IPv4(byte(b.data>>24&0xff), byte(b.data>>16&0xff), byte(b.data>>8&0xff), byte(b.data&0xff)),
-			Mask: net.CIDRMask(cfg.v4Prefix, 32),
+			Mask: net.CIDRMask(cfg.V4Prefix, 32),
 		}
 	}
 
@@ -68,7 +77,7 @@ func (b IPBlock) ToIPNet(cfg IPBlockConfig) *net.IPNet {
 	}
 	return &net.IPNet{
 		IP:   ip,
-		Mask: net.CIDRMask(cfg.v6Prefix, 128),
+		Mask: net.CIDRMask(cfg.V6Prefix, 128),
 	}
 }
 

@@ -110,6 +110,25 @@ func (c *Cerberus) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 				return d.Errf("description must be a string")
 			}
 			c.Description = description
+		case "prefix_cfg":
+			if !d.NextArg() {
+				return d.ArgErr()
+			}
+			v4Prefix, ok := d.ScalarVal().(int)
+			if !ok {
+				return d.Errf("prefix_cfg must be followed by two integers")
+			}
+			if !d.NextArg() {
+				return d.ArgErr()
+			}
+			v6Prefix, ok := d.ScalarVal().(int)
+			if !ok {
+				return d.Errf("prefix_cfg must be followed by two integers")
+			}
+			c.PrefixCfg = IPBlockConfig{
+				V4Prefix: v4Prefix,
+				V6Prefix: v6Prefix,
+			}
 		default:
 			return d.Errf("unknown subdirective '%s'", d.Val())
 		}

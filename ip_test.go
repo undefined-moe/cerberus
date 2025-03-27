@@ -34,8 +34,8 @@ func TestIpBlock_spec(t *testing.T) {
 	})
 	cfgGen := rapid.Custom(func(t *rapid.T) IPBlockConfig {
 		return IPBlockConfig{
-			v4Prefix: rapid.IntRange(1, 32).Draw(t, "v4_prefix"),
-			v6Prefix: rapid.IntRange(1, 64).Draw(t, "v6_prefix"),
+			V4Prefix: rapid.IntRange(1, 32).Draw(t, "v4_prefix"),
+			V6Prefix: rapid.IntRange(1, 64).Draw(t, "v6_prefix"),
 		}
 	})
 	rapid.Check(t, func(t *rapid.T) {
@@ -44,13 +44,13 @@ func TestIpBlock_spec(t *testing.T) {
 		var expected net.IPNet
 		if ip.To4() != nil {
 			expected = net.IPNet{
-				IP:   ip.Mask(net.CIDRMask(cfg.v4Prefix, 32)),
-				Mask: net.CIDRMask(cfg.v4Prefix, 32),
+				IP:   ip.Mask(net.CIDRMask(cfg.V4Prefix, 32)),
+				Mask: net.CIDRMask(cfg.V4Prefix, 32),
 			}
 		} else {
 			expected = net.IPNet{
-				IP:   ip.Mask(net.CIDRMask(cfg.v6Prefix, 128)),
-				Mask: net.CIDRMask(cfg.v6Prefix, 128),
+				IP:   ip.Mask(net.CIDRMask(cfg.V6Prefix, 128)),
+				Mask: net.CIDRMask(cfg.V6Prefix, 128),
 			}
 		}
 

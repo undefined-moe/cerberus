@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -40,7 +41,7 @@ type Cerberus struct {
 	// When set to true, the handler will drop the connection instead of returning a 403 if the IP is blocked.
 	Drop bool `json:"drop,omitempty"`
 	// MaxPending is the maximum number of pending (and failed) requests.
-	// Any IP block (/24 or /64) with more than this number of pending requests will be blocked.
+	// Any IP block (prefix configured in prefix_cfg) with more than this number of pending requests will be blocked.
 	MaxPending int32 `json:"max_pending,omitempty"`
 	// BlockTTL is the time to live for blocked IPs.
 	BlockTTL time.Duration `json:"block_ttl,omitempty"`
@@ -56,7 +57,7 @@ type Cerberus struct {
 	Title string `json:"title,omitempty"`
 	// Description is the description of the challenge page.
 	Description string `json:"description,omitempty"`
-	// PrefixCfg is the IP prefix configuration for blocking.
+	// PrefixCfg is to configure prefixes used to block users in these IP prefix blocks, e.g., /24 /64.
 	PrefixCfg IPBlockConfig `json:"prefix_cfg,omitempty"`
 	logger    *zap.Logger
 	pub       ed25519.PublicKey
@@ -95,8 +96,8 @@ func (c *Cerberus) Provision(context caddy.Context) error {
 	}
 	if c.PrefixCfg.IsEmpty() {
 		c.PrefixCfg = IPBlockConfig{
-			v4Prefix: DefaultIPV4Prefix,
-			v6Prefix: DefaultIPV6Prefix,
+			V4Prefix: DefaultIPV4Prefix,
+			V6Prefix: DefaultIPV6Prefix,
 		}
 	}
 
@@ -167,6 +168,9 @@ func (c *Cerberus) Validate() error {
 	}
 	if c.MaxMemUsage < 1 {
 		return errors.New("max_mem_usage must be at least 1")
+	}
+	if err := ValidateIPBlockConfig(c.PrefixCfg); err != nil {
+		return fmt.Errorf("prefix_cfg: %w", err)
 	}
 
 	marshalled, err := json.Marshal(c)
