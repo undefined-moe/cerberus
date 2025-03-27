@@ -1,4 +1,4 @@
-name: build
+name: Test
 on:
   push:
     branches:
@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  golangci:
+  build:
     name: build
     runs-on: ubuntu-latest
     steps:
@@ -24,3 +24,16 @@ jobs:
         with:
           name: "caddy"
           path: "caddy"
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v26
+      - uses: cachix/cachix-action@v14
+        with:
+          name: devenv
+      - name: Install devenv.sh
+        run: nix profile install nixpkgs#devenv
+      - name: Build
+        run: devenv test

@@ -39,7 +39,8 @@ Also, you need to run the following command to recompile the template if modifie
 $ devenv tasks go:codegen
 ```
 
-Please run the linter before submitting a PR:
+Please run tests and lints before submitting a PR:
 ```bash
+$ direnv test # or go test
 $ golangci-lint run
 ```
