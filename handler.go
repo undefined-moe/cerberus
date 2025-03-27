@@ -42,13 +42,13 @@ func (c *Cerberus) respondFailure(w http.ResponseWriter, r *http.Request, msg st
 }
 
 func (c *Cerberus) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	ipBlock := NewIPBlock(net.ParseIP(getClientIP(r)))
-	caddyhttp.SetVar(r.Context(), VarName, ipBlock)
-
-	if _, ok := c.blocklist.Get(ipBlock); ok {
-		c.logger.Debug("IP is blocked", zap.String("ip", ipBlock.ToIP().String()))
-		c.respondFailure(w, r, "IP blocked", true, http.StatusForbidden)
-		return nil
+	if ipBlock, err := NewIPBlock(net.ParseIP(getClientIP(r)), c.PrefixCfg); err == nil {
+		caddyhttp.SetVar(r.Context(), VarName, ipBlock)
+		if _, ok := c.blocklist.Get(ipBlock); ok {
+			c.logger.Debug("IP is blocked", zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()))
+			c.respondFailure(w, r, "IP blocked", true, http.StatusForbidden)
+			return nil
+		}
 	}
 
 	if r.FormValue("cerberus") != "" {
@@ -223,14 +223,16 @@ func (c *Cerberus) secondaryScreen(r *http.Request, token *jwt.Token) (bool, err
 }
 
 func (c *Cerberus) invokeAuth(w http.ResponseWriter, r *http.Request) error {
-	ipBlock := caddyhttp.GetVar(r.Context(), VarName).(IPBlock)
-	if !ipBlock.IsEmpty() {
+	ipBlockRaw := caddyhttp.GetVar(r.Context(), VarName)
+	if ipBlockRaw != nil {
+		ipBlock := ipBlockRaw.(IPBlock)
+
 		counterRaw, ok := c.pending.Get(ipBlock)
 		if ok {
 			counter := counterRaw.(*atomic.Int32)
 
 			if counter.Load() > c.MaxPending {
-				c.logger.Info("Max pending reached, blocking IP", zap.String("ip", ipBlock.ToIP().String()))
+				c.logger.Info("Max pending reached, blocking IP", zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()))
 				c.blocklist.SetWithTTL(ipBlock, struct{}{}, 0, c.BlockTTL)
 
 				c.respondFailure(w, r, "IP blocked", true, http.StatusForbidden)
@@ -327,8 +329,9 @@ func (c *Cerberus) answerHandle(w http.ResponseWriter, r *http.Request) error {
 
 	c.logger.Debug("user passed the challenge")
 
-	ipBlock := caddyhttp.GetVar(r.Context(), VarName).(IPBlock)
-	if !ipBlock.IsEmpty() {
+	ipBlockRaw := caddyhttp.GetVar(r.Context(), VarName)
+	if ipBlockRaw != nil {
+		ipBlock := ipBlockRaw.(IPBlock)
 		counterRaw, ok := c.pending.Get(ipBlock)
 		if ok {
 			counter := counterRaw.(*atomic.Int32)

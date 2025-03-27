@@ -25,6 +25,8 @@ const (
 	DefaultMaxMemUsage = 1 << 29        // 512MB
 	DefaultTitle       = "Cerberus Challenge"
 	DefaultDescription = "Making sure you're not a bot!"
+	DefaultIPV4Prefix  = 32
+	DefaultIPV6Prefix  = 64
 )
 
 func init() {
@@ -54,11 +56,13 @@ type Cerberus struct {
 	Title string `json:"title,omitempty"`
 	// Description is the description of the challenge page.
 	Description string `json:"description,omitempty"`
-	logger      *zap.Logger
-	pub         ed25519.PublicKey
-	priv        ed25519.PrivateKey
-	pending     *ristretto.Cache
-	blocklist   *ristretto.Cache
+	// PrefixCfg is the IP prefix configuration for blocking.
+	PrefixCfg IPBlockConfig `json:"prefix_cfg,omitempty"`
+	logger    *zap.Logger
+	pub       ed25519.PublicKey
+	priv      ed25519.PrivateKey
+	pending   *ristretto.Cache
+	blocklist *ristretto.Cache
 }
 
 func (c *Cerberus) Provision(context caddy.Context) error {
@@ -89,6 +93,12 @@ func (c *Cerberus) Provision(context caddy.Context) error {
 	if c.Description == "" {
 		c.Description = DefaultDescription
 	}
+	if c.PrefixCfg.IsEmpty() {
+		c.PrefixCfg = IPBlockConfig{
+			v4Prefix: DefaultIPV4Prefix,
+			v6Prefix: DefaultIPV6Prefix,
+		}
+	}
 
 	c.logger = context.Logger()
 
@@ -101,7 +111,7 @@ func (c *Cerberus) Provision(context caddy.Context) error {
 		c.priv = priv
 	}
 
-	pendingCost := int64(c.MaxMemUsage - c.MaxMemUsage/8)           // 7/8 for pending list
+	pendingCost := c.MaxMemUsage - c.MaxMemUsage/8                  // 7/8 for pending list
 	pendingCounters, pendingElems := cacheParams(pendingCost, 4+56) // 4 bytes for counter + 56 bytes internal cost
 	pending, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: pendingCounters,
@@ -114,7 +124,7 @@ func (c *Cerberus) Provision(context caddy.Context) error {
 	}
 	c.pending = pending
 
-	blocklistCost := int64(c.MaxMemUsage / 8)                           // 1/8 for blocklist
+	blocklistCost := c.MaxMemUsage / 8                                  // 1/8 for blocklist
 	blocklistCounters, blocklistElems := cacheParams(blocklistCost, 56) // 56 bytes internal cost
 	blocklist, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: blocklistCounters,

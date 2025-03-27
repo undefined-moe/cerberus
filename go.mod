@@ -11,6 +11,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	go.uber.org/zap v1.27.0
+	pgregory.net/rapid v1.2.0
 )
 
 require (
