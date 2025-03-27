@@ -296,12 +296,14 @@ func (c *Cerberus) answerHandle(w http.ResponseWriter, r *http.Request) error {
 		c.clearCookie(w)
 		c.logger.Error("wrong response", zap.String("response", response), zap.Int("difficulty", c.Difficulty))
 		c.respondFailure(w, r, "wrong response", false, http.StatusForbidden)
+		return nil
 	}
 
 	if subtle.ConstantTimeCompare([]byte(answer), []byte(response)) != 1 {
 		c.clearCookie(w)
 		c.logger.Error("response mismatch", zap.String("expected", answer), zap.String("actual", response))
 		c.respondFailure(w, r, "response mismatch", false, http.StatusForbidden)
+		return nil
 	}
 
 	// Now we know the user passed the challenge, we sign the result.
