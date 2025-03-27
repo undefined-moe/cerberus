@@ -44,7 +44,7 @@ func (c *Cerberus) respondFailure(w http.ResponseWriter, r *http.Request, msg st
 func (c *Cerberus) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
 	if ipBlock, err := NewIPBlock(net.ParseIP(getClientIP(r)), c.PrefixCfg); err == nil {
 		caddyhttp.SetVar(r.Context(), VarName, ipBlock)
-		if _, ok := c.blocklist.Get(ipBlock); ok {
+		if _, ok := c.blocklist.Get(ipBlock.data); ok {
 			c.logger.Debug("IP is blocked", zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()))
 			c.respondFailure(w, r, "IP blocked", true, http.StatusForbidden)
 			return nil
@@ -227,13 +227,14 @@ func (c *Cerberus) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 	if ipBlockRaw != nil {
 		ipBlock := ipBlockRaw.(IPBlock)
 
-		counterRaw, ok := c.pending.Get(ipBlock)
+		counter, ok := c.pending.Get(ipBlock.data)
 		if ok {
-			counter := counterRaw.(*atomic.Int32)
-
 			if counter.Load() > c.MaxPending {
-				c.logger.Info("Max pending reached, blocking IP", zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()))
-				c.blocklist.SetWithTTL(ipBlock, struct{}{}, 0, c.BlockTTL)
+				c.logger.Info(
+					"Max failed/active challenges reached for IP block, rejecting",
+					zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()),
+				)
+				c.blocklist.SetWithTTL(ipBlock.data, struct{}{}, 0, c.BlockTTL)
 
 				c.respondFailure(w, r, "IP blocked", true, http.StatusForbidden)
 				return nil
@@ -243,7 +244,7 @@ func (c *Cerberus) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 		} else {
 			counter := new(atomic.Int32)
 			counter.Store(1)
-			c.pending.SetWithTTL(ipBlock, counter, 0, c.PendingTTL)
+			c.pending.SetWithTTL(ipBlock.data, counter, PendingItemCost, c.PendingTTL)
 		}
 	}
 
@@ -334,9 +335,8 @@ func (c *Cerberus) answerHandle(w http.ResponseWriter, r *http.Request) error {
 	ipBlockRaw := caddyhttp.GetVar(r.Context(), VarName)
 	if ipBlockRaw != nil {
 		ipBlock := ipBlockRaw.(IPBlock)
-		counterRaw, ok := c.pending.Get(ipBlock)
+		counter, ok := c.pending.Get(ipBlock.data)
 		if ok {
-			counter := counterRaw.(*atomic.Int32)
 			counter.Add(-1)
 		}
 	}

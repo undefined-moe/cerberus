@@ -80,8 +80,3 @@ func (b IPBlock) ToIPNet(cfg IPBlockConfig) *net.IPNet {
 		Mask: net.CIDRMask(cfg.V6Prefix, 128),
 	}
 }
-
-func KeyToHash(keyRaw interface{}) (uint64, uint64) {
-	key := keyRaw.(IPBlock)
-	return key.data, 0
-}

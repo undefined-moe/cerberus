@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
-	"github.com/dgraph-io/ristretto"
+	"github.com/dgraph-io/ristretto/v2"
 	"go.uber.org/zap"
 )
 
@@ -28,6 +30,9 @@ const (
 	DefaultDescription = "Making sure you're not a bot!"
 	DefaultIPV4Prefix  = 32
 	DefaultIPV6Prefix  = 64
+	CacheInternalCost  = 16 + int64(unsafe.Sizeof(time.Time{}))
+	PendingItemCost    = 4 + int64(unsafe.Sizeof(&atomic.Int32{})) + CacheInternalCost
+	BlocklistItemCost  = CacheInternalCost
 )
 
 func init() {
@@ -62,8 +67,8 @@ type Cerberus struct {
 	logger    *zap.Logger
 	pub       ed25519.PublicKey
 	priv      ed25519.PrivateKey
-	pending   *ristretto.Cache
-	blocklist *ristretto.Cache
+	pending   *ristretto.Cache[uint64, *atomic.Int32]
+	blocklist *ristretto.Cache[uint64, struct{}]
 }
 
 func (c *Cerberus) Provision(context caddy.Context) error {
@@ -112,26 +117,26 @@ func (c *Cerberus) Provision(context caddy.Context) error {
 		c.priv = priv
 	}
 
-	pendingCost := c.MaxMemUsage - c.MaxMemUsage/8                  // 7/8 for pending list
-	pendingCounters, pendingElems := cacheParams(pendingCost, 4+56) // 4 bytes for counter + 56 bytes internal cost
-	pending, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: pendingCounters,
-		MaxCost:     pendingCost,
-		BufferItems: 64,
-		KeyToHash:   KeyToHash,
+	pendingCost := c.MaxMemUsage - c.MaxMemUsage/8                             // 7/8 for pending list
+	pendingCounters, pendingElems := cacheParams(pendingCost, PendingItemCost) // 4 bytes for counter + internal cost
+	pending, err := ristretto.NewCache(&ristretto.Config[uint64, *atomic.Int32]{
+		NumCounters:        pendingCounters,
+		MaxCost:            pendingCost,
+		BufferItems:        64,
+		IgnoreInternalCost: true, // We have a more accurate cost calculation
 	})
 	if err != nil {
 		return err
 	}
 	c.pending = pending
 
-	blocklistCost := c.MaxMemUsage / 8                                  // 1/8 for blocklist
-	blocklistCounters, blocklistElems := cacheParams(blocklistCost, 56) // 56 bytes internal cost
-	blocklist, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: blocklistCounters,
-		MaxCost:     blocklistCost,
-		BufferItems: 64,
-		KeyToHash:   KeyToHash,
+	blocklistCost := c.MaxMemUsage / 8 // 1/8 for blocklist
+	blocklistCounters, blocklistElems := cacheParams(blocklistCost, BlocklistItemCost)
+	blocklist, err := ristretto.NewCache(&ristretto.Config[uint64, struct{}]{
+		NumCounters:        blocklistCounters,
+		MaxCost:            blocklistCost,
+		BufferItems:        64,
+		IgnoreInternalCost: true, // We have a more accurate cost calculation
 	})
 	if err != nil {
 		return err
