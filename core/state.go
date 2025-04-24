@@ -5,6 +5,8 @@ import (
 	"time"
 	"unsafe"
 
+	"crypto/sha256"
+	"encoding/hex"
 	"github.com/dgraph-io/ristretto/v2"
 	"golang.org/x/crypto/ed25519"
 )
@@ -18,6 +20,7 @@ const (
 type InstanceState struct {
 	pub       ed25519.PublicKey
 	priv      ed25519.PrivateKey
+	fp        string
 	pending   *ristretto.Cache[uint64, *atomic.Int32]
 	blocklist *ristretto.Cache[uint64, struct{}]
 }
@@ -59,9 +62,12 @@ func NewInstanceState(pendingMaxMemUsage int64, blocklistMaxMemUsage int64) (*In
 		return nil, 0, 0, err
 	}
 
+	fp := sha256.Sum256(priv.Seed())
+
 	return &InstanceState{
 		pub:       pub,
 		priv:      priv,
+		fp:        hex.EncodeToString(fp[:]),
 		pending:   pending,
 		blocklist: blocklist,
 	}, pendingElems, blocklistElems, nil
@@ -73,6 +79,10 @@ func (s *InstanceState) GetPublicKey() ed25519.PublicKey {
 
 func (s *InstanceState) GetPrivateKey() ed25519.PrivateKey {
 	return s.priv
+}
+
+func (s *InstanceState) GetFingerprint() string {
+	return s.fp
 }
 
 func (s *InstanceState) GetPending() *ristretto.Cache[uint64, *atomic.Int32] {

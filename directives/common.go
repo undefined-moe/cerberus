@@ -75,9 +75,9 @@ func randomJitter() bool {
 }
 
 func challengeFor(r *http.Request, c *core.Instance) (string, error) {
-	fp := sha256.Sum256(c.GetPrivateKey().Seed())
+	fp := c.GetFingerprint()
 
-	payload := fmt.Sprintf("Accept-Language=%s,X-Real-IP=%s,User-Agent=%s,WeekTime=%s,Fingerprint=%x,Difficulty=%d",
+	payload := fmt.Sprintf("Accept-Language=%s,X-Real-IP=%s,User-Agent=%s,WeekTime=%s,Fingerprint=%s,Difficulty=%d",
 		r.Header.Get("Accept-Language"),
 		getClientIP(r),
 		r.Header.Get("User-Agent"),
