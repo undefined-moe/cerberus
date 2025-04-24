@@ -3,12 +3,10 @@
 		level DEBUG
 	}
 
-	# Global configuration for a cerberus instance.
+	# Global configuration for cerberus.
 	cerberus {
-		# Unique instance ID. You need to refer to the same instance ID in both the middleware and the handler directives.
-		instance_id "instance-1"
 		# Challenge difficulty (number of leading zeroes in the hash).
-		difficulty 4
+		difficulty 5
 		# When set to true, the handler will drop the connection instead of returning a 403 if the IP is blocked.
 		# drop
 		# MaxPending is the maximum number of pending (and failed) requests.
@@ -42,8 +40,7 @@ localhost {
 	# You need to deploy a handler for each cerberus instance.
 	# This route will be used to serve challenge endpoints and static files.
 	handle_path /.cerberus/* {
-		# The instance ID must match the one in the global configuration.
-		cerberus_endpoint "instance-1"
+		cerberus_endpoint
 	}
 
 	@cerberus {
@@ -53,9 +50,7 @@ localhost {
 
 	# This is the actual middleware that will be used to challenge requests.
 	# You can attach a named matcher to the cerberus directive. Only requests matching the matcher will be challenged.
-	# 
-	# The instance ID must match the one in the global configuration.
-	cerberus @cerberus "instance-1" {
+	cerberus @cerberus {
 		# The base URL for the challenge. It must be the same as the deployed endpoint route.
 		base_url "/.cerberus"
 	}

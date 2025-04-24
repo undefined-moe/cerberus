@@ -17,15 +17,6 @@ func (c *App) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 
 	for nesting := d.Nesting(); d.NextBlock(nesting); {
 		switch d.Val() {
-		case "instance_id":
-			if !d.NextArg() {
-				return d.ArgErr()
-			}
-			instanceID, ok := d.ScalarVal().(string)
-			if !ok {
-				return d.Errf("instance_id must be a string")
-			}
-			c.InstanceID = instanceID
 		case "difficulty":
 			if !d.NextArg() {
 				return d.ArgErr()
@@ -169,15 +160,6 @@ func ParseCaddyFileApp(d *caddyfile.Dispenser, _ any) (any, error) {
 func (m *Middleware) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	d.Next() // consume the directive
 
-	if !d.NextArg() {
-		return d.ArgErr()
-	}
-	instanceID, ok := d.ScalarVal().(string)
-	if !ok {
-		return d.Errf("instance_id must be a string")
-	}
-	m.InstanceID = instanceID
-
 	for nesting := d.Nesting(); d.NextBlock(nesting); {
 		switch d.Val() {
 		case "base_url":
@@ -205,14 +187,7 @@ func ParseCaddyFileMiddleware(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandl
 func (e *Endpoint) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	d.Next() // consume the directive
 
-	if !d.NextArg() {
-		return d.ArgErr()
-	}
-	instanceID, ok := d.ScalarVal().(string)
-	if !ok {
-		return d.Errf("instance_id must be a string")
-	}
-	e.InstanceID = instanceID
+	// TODO do we need this?
 	if d.NextArg() {
 		return d.Errf("too many arguments")
 	}

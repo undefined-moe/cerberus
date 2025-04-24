@@ -2,6 +2,7 @@ package directives
 
 import (
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,38 +14,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sjtug/cerberus/core"
 	"github.com/sjtug/cerberus/internal/ipblock"
-	"github.com/sjtug/cerberus/internal/oncecell"
 	"github.com/sjtug/cerberus/web"
 	"go.uber.org/zap"
 )
 
 // Endpoint is the handler that will be used to serve challenge endpoints and static files.
 type Endpoint struct {
-	// Unique instance ID. You need to refer to the same instance ID in both the middleware and the handler directives.
-	InstanceID string `json:"instance_id,omitempty"`
-
-	logger *zap.Logger
-	c      *oncecell.OnceCell[*core.Instance]
-}
-
-func (e *Endpoint) GetInstance() *core.Instance {
-	return e.c.Get(func() *core.Instance {
-		core.Instances.RLock()
-		defer core.Instances.RUnlock()
-		c, ok := core.Instances.Pool[e.InstanceID]
-		if !ok {
-			e.logger.Error("instance not found", zap.String("instance_id", e.InstanceID))
-			return nil
-		}
-		return c
-	})
+	instance *core.Instance
+	logger   *zap.Logger
 }
 
 func (e *Endpoint) answerHandle(w http.ResponseWriter, r *http.Request) error {
-	c := e.GetInstance()
-	if c == nil {
-		return fmt.Errorf("instance not found for instance_id %s", e.InstanceID)
-	}
+	c := e.instance
 
 	nonceStr := r.FormValue("nonce")
 	if nonceStr == "" {
@@ -150,10 +131,7 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request, _ caddyhttp
 		return nil
 	}
 
-	c := e.GetInstance()
-	if c == nil {
-		return fmt.Errorf("instance not found for instance_id %s", e.InstanceID)
-	}
+	c := e.instance
 
 	path := strings.TrimSuffix(r.URL.Path, "/")
 	if path == "/answer" && r.Method == http.MethodPost {
@@ -166,7 +144,19 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request, _ caddyhttp
 
 func (e *Endpoint) Provision(ctx caddy.Context) error {
 	e.logger = ctx.Logger()
-	e.c = oncecell.NewOnceCell[*core.Instance]()
+
+	appRaw, err := ctx.App("cerberus")
+	if err != nil {
+		return err
+	}
+	app := appRaw.(*App)
+
+	instance := app.GetInstance()
+	if instance == nil {
+		return errors.New("no global cerberus app found")
+	}
+	e.instance = instance
+
 	return nil
 }
 

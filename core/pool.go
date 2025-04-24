@@ -2,19 +2,46 @@ package core
 
 import (
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 var (
-	Instances = NewInstancePool()
+	lock     sync.RWMutex
+	instance *Instance
 )
 
-type InstancePool struct {
-	sync.RWMutex
-	Pool map[string]*Instance
-}
+// GetInstance returns an instance of given config.
+// If there already exists an instance (during server reload), it will be updated with the new config.
+// Otherwise, a new instance will be created.
+// User can pass in an optional logger to log basic metrics about the initialized state.
+func GetInstance(config Config, logger *zap.Logger) (*Instance, error) {
+	lock.Lock()
+	defer lock.Unlock()
 
-func NewInstancePool() *InstancePool {
-	return &InstancePool{
-		Pool: make(map[string]*Instance),
+	if instance == nil {
+		// Initialize a new instance.
+		state, pendingElems, blocklistElems, err := NewInstanceState(config.MaxMemUsage, config.MaxMemUsage)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.Info("cerberus state initialized",
+			zap.Int64("pending_elems", pendingElems),
+			zap.Int64("blocklist_elems", blocklistElems),
+		)
+		instance = &Instance{
+			Config:        config,
+			InstanceState: state,
+		}
+		return instance, nil
 	}
+
+	// Update the existing instance with the new config.
+	err := instance.UpdateWithConfig(config, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return instance, nil
 }

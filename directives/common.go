@@ -108,7 +108,7 @@ func respondFailure(w http.ResponseWriter, r *http.Request, c *core.Config, msg 
 		web.Error(msg, c.Mail),
 	)
 	templ.Handler(
-		web.Base("Cerberus Challenge"),
+		web.Base(c.Title),
 		templ.WithStatus(status),
 	).ServeHTTP(w, r.WithContext(ctx))
 }

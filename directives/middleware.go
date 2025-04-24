@@ -3,6 +3,7 @@ package directives
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,39 +15,17 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sjtug/cerberus/core"
 	"github.com/sjtug/cerberus/internal/ipblock"
-	"github.com/sjtug/cerberus/internal/oncecell"
 	"github.com/sjtug/cerberus/web"
 	"go.uber.org/zap"
 )
 
 // Middleware is the actual middleware that will be used to challenge requests.
 type Middleware struct {
-	// Unique instance ID. You need to refer to the same instance ID in both the middleware and the handler directives.
-	InstanceID string `json:"instance_id,omitempty"`
 	// The base URL for the challenge. It must be the same as the deployed endpoint route.
 	BaseURL string `json:"base_url,omitempty"`
 
-	logger *zap.Logger
-	c      *oncecell.OnceCell[*core.Instance]
-}
-
-func (m *Middleware) GetInstance() (*core.Instance, error) {
-	instance := m.c.Get(func() *core.Instance {
-		core.Instances.RLock()
-		defer core.Instances.RUnlock()
-		c, ok := core.Instances.Pool[m.InstanceID]
-		if !ok {
-			m.logger.Error("instance not found", zap.String("instance_id", m.InstanceID))
-			return nil
-		}
-		return c
-	})
-
-	if instance == nil {
-		return nil, fmt.Errorf("instance not found for instance_id %s", m.InstanceID)
-	}
-
-	return instance, nil
+	instance *core.Instance
+	logger   *zap.Logger
 }
 
 func getClientIP(r *http.Request) string {
@@ -60,11 +39,7 @@ func getClientIP(r *http.Request) string {
 }
 
 func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
-	c, err := m.GetInstance()
-	if err != nil {
-		m.logger.Error("failed to get instance", zap.Error(err))
-		return err
-	}
+	c := m.instance
 
 	ipBlockRaw := caddyhttp.GetVar(r.Context(), core.VarName)
 	if ipBlockRaw != nil {
@@ -111,11 +86,7 @@ func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (m *Middleware) secondaryScreen(r *http.Request, token *jwt.Token) (bool, error) {
-	c, err := m.GetInstance()
-	if err != nil {
-		m.logger.Error("failed to get instance", zap.Error(err))
-		return false, err
-	}
+	c := m.instance
 
 	claims := token.Claims.(jwt.MapClaims)
 
@@ -161,10 +132,7 @@ func (m *Middleware) secondaryScreen(r *http.Request, token *jwt.Token) (bool, e
 }
 
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	c, err := m.GetInstance()
-	if err != nil {
-		return fmt.Errorf("instance not found for instance_id %s", m.InstanceID)
-	}
+	c := m.instance
 
 	if ipBlock, err := ipblock.NewIPBlock(net.ParseIP(getClientIP(r)), c.PrefixCfg); err == nil {
 		caddyhttp.SetVar(r.Context(), core.VarName, ipBlock)
@@ -227,7 +195,26 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 
 func (m *Middleware) Provision(ctx caddy.Context) error {
 	m.logger = ctx.Logger()
-	m.c = oncecell.NewOnceCell[*core.Instance]()
+
+	appRaw, err := ctx.App("cerberus")
+	if err != nil {
+		return err
+	}
+	app := appRaw.(*App)
+
+	instance := app.GetInstance()
+	if instance == nil {
+		return errors.New("no global cerberus app found")
+	}
+	m.instance = instance
+
+	return nil
+}
+
+func (m *Middleware) Validate() error {
+	if m.BaseURL == "" {
+		return fmt.Errorf("base_url is required")
+	}
 	return nil
 }
 
@@ -240,5 +227,6 @@ func (Middleware) CaddyModule() caddy.ModuleInfo {
 
 var (
 	_ caddy.Provisioner           = (*Middleware)(nil)
+	_ caddy.Validator             = (*Middleware)(nil)
 	_ caddyhttp.MiddlewareHandler = (*Middleware)(nil)
 )
