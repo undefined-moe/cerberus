@@ -1,4 +1,4 @@
-package cerberus
+package core
 
 import (
 	"errors"
@@ -6,6 +6,20 @@ import (
 	"time"
 
 	"github.com/sjtug/cerberus/internal/ipblock"
+)
+
+const (
+	DefaultCookieName  = "cerberus-auth"
+	DefaultHeaderName  = "X-Cerberus-Status"
+	DefaultDifficulty  = 4
+	DefaultMaxPending  = 128
+	DefaultBlockTTL    = time.Hour * 24 // 1 day
+	DefaultPendingTTL  = time.Hour      // 1 hour
+	DefaultMaxMemUsage = 1 << 29        // 512MB
+	DefaultTitle       = "Cerberus Challenge"
+	DefaultDescription = "Making sure you're not a bot!"
+	DefaultIPV4Prefix  = 32
+	DefaultIPV6Prefix  = 64
 )
 
 type Config struct {

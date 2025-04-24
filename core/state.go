@@ -1,15 +1,18 @@
-package cerberus
+package core
 
 import (
-	"sync"
 	"sync/atomic"
+	"time"
+	"unsafe"
 
 	"github.com/dgraph-io/ristretto/v2"
 	"golang.org/x/crypto/ed25519"
 )
 
-var (
-	instances = NewInstancePool()
+const (
+	CacheInternalCost = 16 + int64(unsafe.Sizeof(time.Time{}))
+	PendingItemCost   = 4 + int64(unsafe.Sizeof(&atomic.Int32{})) + CacheInternalCost
+	BlocklistItemCost = CacheInternalCost
 )
 
 type InstanceState struct {
@@ -64,18 +67,18 @@ func NewInstanceState(pendingMaxMemUsage int64, blocklistMaxMemUsage int64) (*In
 	}, pendingElems, blocklistElems, nil
 }
 
-type Instance struct {
-	config Config
-	state  *InstanceState
+func (s *InstanceState) GetPublicKey() ed25519.PublicKey {
+	return s.pub
 }
 
-type InstancePool struct {
-	sync.RWMutex
-	pool map[string]*Instance
+func (s *InstanceState) GetPrivateKey() ed25519.PrivateKey {
+	return s.priv
 }
 
-func NewInstancePool() *InstancePool {
-	return &InstancePool{
-		pool: make(map[string]*Instance),
-	}
+func (s *InstanceState) GetPending() *ristretto.Cache[uint64, *atomic.Int32] {
+	return s.pending
+}
+
+func (s *InstanceState) GetBlocklist() *ristretto.Cache[uint64, struct{}] {
+	return s.blocklist
 }

@@ -1,4 +1,4 @@
-package cerberus
+package directives
 
 import (
 	"time"
@@ -8,6 +8,7 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/dustin/go-humanize"
+	"github.com/sjtug/cerberus/core"
 	"github.com/sjtug/cerberus/internal/ipblock"
 )
 
@@ -147,11 +148,11 @@ func (c *App) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	return nil
 }
 
-func parseCaddyFileApp(d *caddyfile.Dispenser, _ any) (any, error) {
+func ParseCaddyFileApp(d *caddyfile.Dispenser, _ any) (any, error) {
 	var c App
 	err := c.UnmarshalCaddyfile(d)
 	return httpcaddyfile.App{
-		Name:  AppName,
+		Name:  core.AppName,
 		Value: caddyconfig.JSON(c, nil),
 	}, err
 }
@@ -186,7 +187,7 @@ func (m *Middleware) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	return nil
 }
 
-func parseCaddyFileMiddleware(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
+func ParseCaddyFileMiddleware(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
 	var m Middleware
 	err := m.UnmarshalCaddyfile(h.Dispenser)
 	return &m, err
@@ -209,7 +210,7 @@ func (e *Endpoint) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	return nil
 }
 
-func parseCaddyFileEndpoint(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
+func ParseCaddyFileEndpoint(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
 	var e Endpoint
 	err := e.UnmarshalCaddyfile(h.Dispenser)
 	return &e, err
