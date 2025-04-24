@@ -140,6 +140,15 @@ func (c *App) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 				V4Prefix: v4Prefix,
 				V6Prefix: v6Prefix,
 			}
+		case "mail":
+			if !d.NextArg() {
+				return d.ArgErr()
+			}
+			mail, ok := d.ScalarVal().(string)
+			if !ok {
+				return d.Errf("mail must be a string")
+			}
+			c.Mail = mail
 		default:
 			return d.Errf("unknown subdirective '%s'", d.Val())
 		}

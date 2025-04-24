@@ -1,6 +1,7 @@
 package directives
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -9,8 +10,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sjtug/cerberus/core"
+	"github.com/sjtug/cerberus/web"
 )
 
 func clearCookie(w http.ResponseWriter, cookieName string) {
@@ -86,7 +89,7 @@ func challengeFor(r *http.Request, c *core.Instance) (string, error) {
 	return sha256sum(payload)
 }
 
-func respondFailure(w http.ResponseWriter, r *http.Request, c *core.Config, msg string, blocked bool, status int) {
+func respondFailure(w http.ResponseWriter, r *http.Request, c *core.Config, msg string, blocked bool, status int, baseURL string) {
 	if blocked {
 		if c.Drop {
 			// Drop the connection
@@ -100,5 +103,12 @@ func respondFailure(w http.ResponseWriter, r *http.Request, c *core.Config, msg 
 		w.Header().Set(c.HeaderName, "FAIL")
 	}
 
-	http.Error(w, msg, status)
+	ctx := templ.WithChildren(
+		context.WithValue(context.WithValue(r.Context(), web.BaseURLCtxKey, baseURL), web.VersionCtxKey, core.Version),
+		web.Error(msg, c.Mail),
+	)
+	templ.Handler(
+		web.Base("Cerberus Challenge"),
+		templ.WithStatus(status),
+	).ServeHTTP(w, r.WithContext(ctx))
 }

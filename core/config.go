@@ -42,6 +42,8 @@ type Config struct {
 	HeaderName string `json:"header_name,omitempty"`
 	// Title is the title of the challenge page.
 	Title string `json:"title,omitempty"`
+	// Mail is the email address to contact for support.
+	Mail string `json:"mail,omitempty"`
 	// Description is the description of the challenge page.
 	Description string `json:"description,omitempty"`
 	// PrefixCfg is to configure prefixes used to block users in these IP prefix blocks, e.g., /24 /64.

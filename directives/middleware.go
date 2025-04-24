@@ -1,6 +1,7 @@
 package directives
 
 import (
+	"context"
 	"crypto/subtle"
 	"fmt"
 	"net"
@@ -78,7 +79,7 @@ func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 				)
 				c.GetBlocklist().SetWithTTL(ipBlock.ToUint64(), struct{}{}, 0, c.BlockTTL)
 
-				respondFailure(w, r, &c.Config, "IP blocked", true, http.StatusForbidden)
+				respondFailure(w, r, &c.Config, "IP blocked", true, http.StatusForbidden, m.BaseURL)
 				return nil
 			}
 
@@ -98,9 +99,13 @@ func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	ctx := templ.WithChildren(
+		context.WithValue(context.WithValue(r.Context(), web.BaseURLCtxKey, m.BaseURL), web.VersionCtxKey, core.Version),
+		web.Challenge(challenge, c.Difficulty),
+	)
 	templ.Handler(
-		web.BasicPage("Cerberus Challenge", "Making sure you're not a bot!", challenge, c.Difficulty, m.BaseURL),
-	).ServeHTTP(w, r)
+		web.Base("Cerberus Challenge"),
+	).ServeHTTP(w, r.WithContext(ctx))
 
 	return nil
 }
@@ -165,7 +170,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 		caddyhttp.SetVar(r.Context(), core.VarName, ipBlock)
 		if _, ok := c.GetBlocklist().Get(ipBlock.ToUint64()); ok {
 			m.logger.Debug("IP is blocked", zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()))
-			respondFailure(w, r, &c.Config, "IP blocked", true, http.StatusForbidden)
+			respondFailure(w, r, &c.Config, "IP blocked", true, http.StatusForbidden, m.BaseURL)
 			return nil
 		}
 	}

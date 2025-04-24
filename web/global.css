@@ -1,0 +1,5 @@
+@import "tailwindcss" source(".");
+
+body {
+    background-color: #fff8e7;
+}

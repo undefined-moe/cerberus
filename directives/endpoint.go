@@ -12,9 +12,9 @@ import (
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sjtug/cerberus/core"
-	"github.com/sjtug/cerberus/embed"
 	"github.com/sjtug/cerberus/internal/ipblock"
 	"github.com/sjtug/cerberus/internal/oncecell"
+	"github.com/sjtug/cerberus/web"
 	"go.uber.org/zap"
 )
 
@@ -49,14 +49,14 @@ func (e *Endpoint) answerHandle(w http.ResponseWriter, r *http.Request) error {
 	nonceStr := r.FormValue("nonce")
 	if nonceStr == "" {
 		e.logger.Info("nonce is empty")
-		respondFailure(w, r, &c.Config, "nonce is empty", false, http.StatusBadRequest)
+		respondFailure(w, r, &c.Config, "nonce is empty", false, http.StatusBadRequest, ".")
 		return nil
 	}
 
 	nonce, err := strconv.Atoi(nonceStr)
 	if err != nil {
 		e.logger.Debug("nonce is not a integer", zap.Error(err))
-		respondFailure(w, r, &c.Config, "nonce is not a integer", false, http.StatusBadRequest)
+		respondFailure(w, r, &c.Config, "nonce is not a integer", false, http.StatusBadRequest, ".")
 		return nil
 	}
 
@@ -78,14 +78,14 @@ func (e *Endpoint) answerHandle(w http.ResponseWriter, r *http.Request) error {
 	if !strings.HasPrefix(response, strings.Repeat("0", c.Difficulty)) {
 		clearCookie(w, c.CookieName)
 		e.logger.Error("wrong response", zap.String("response", response), zap.Int("difficulty", c.Difficulty))
-		respondFailure(w, r, &c.Config, "wrong response", false, http.StatusForbidden)
+		respondFailure(w, r, &c.Config, "wrong response", false, http.StatusForbidden, ".")
 		return nil
 	}
 
 	if subtle.ConstantTimeCompare([]byte(answer), []byte(response)) != 1 {
 		clearCookie(w, c.CookieName)
 		e.logger.Error("response mismatch", zap.String("expected", answer), zap.String("actual", response))
-		respondFailure(w, r, &c.Config, "response mismatch", false, http.StatusForbidden)
+		respondFailure(w, r, &c.Config, "response mismatch", false, http.StatusForbidden, ".")
 		return nil
 	}
 
@@ -123,7 +123,7 @@ func (e *Endpoint) answerHandle(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	http.Redirect(w, r, redir, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, redir, http.StatusSeeOther)
 	return nil
 }
 
@@ -141,7 +141,7 @@ func tryServeFile(w http.ResponseWriter, r *http.Request) bool {
 	req.URL.Path = filePath
 
 	// Serve the file using http.FileServer
-	http.FileServer(http.FS(embed.Content)).ServeHTTP(w, &req)
+	http.FileServer(http.FS(web.Content)).ServeHTTP(w, &req)
 	return true
 }
 
@@ -160,7 +160,7 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request, _ caddyhttp
 		return e.answerHandle(w, r)
 	}
 
-	respondFailure(w, r, &c.Config, "Not found", false, http.StatusNotFound)
+	respondFailure(w, r, &c.Config, "Not found", false, http.StatusNotFound, ".")
 	return nil
 }
 
