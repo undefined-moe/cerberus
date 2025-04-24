@@ -2,7 +2,15 @@
 
 {
   # https://devenv.sh/packages/
-  packages = with pkgs; [ git xcaddy templ esbuild golangci-lint ];
+  packages = with pkgs; [
+    git
+    xcaddy
+    templ
+    esbuild
+    golangci-lint
+    tailwindcss_4
+    pngquant
+  ];
 
   # https://devenv.sh/languages/
   languages.go = {
@@ -10,10 +18,32 @@
     enableHardeningWorkaround = true;
   };
 
-  tasks = {
-    "js:bundle".exec = "esbuild js/main.mjs --bundle --minify --outfile=dist/main.js --allow-overwrite";
-    "go:codegen".exec = "templ generate";
-  };
+  tasks =
+    let
+      tailwindcss = "${pkgs.tailwindcss_4}/bin/tailwindcss";
+      esbuild = "${pkgs.esbuild}/bin/esbuild";
+      find = "${pkgs.findutils}/bin/find";
+      xargs = "${pkgs.findutils}/bin/xargs";
+      pngquant = "${pkgs.pngquant}/bin/pngquant";
+      templ = "${pkgs.templ}/bin/templ";
+    in
+    {
+      "css:build".exec = "${tailwindcss} -i ./web/global.css -o ./web/dist/global.css --minify";
+      "js:bundle".exec =
+        "${esbuild} ./web/js/main.mjs --bundle --minify --outfile=./web/dist/main.mjs --allow-overwrite";
+      "img:dist".exec = ''
+        mkdir -p ./web/dist/img
+        ${find} ./web/img -maxdepth 1 -name "*.png" -printf "%f\n" | ${xargs} -n 1 sh -c '${pngquant} --force --strip ./web/img/$0 -o ./web/dist/img/$0'
+      '';
+      "go:codegen".exec = "${templ} generate";
+      "dist:clean".exec = "rm -rf ./web/dist";
+      "dist:build".after = [
+        "css:build"
+        "js:bundle"
+        "img:dist"
+        "go:codegen"
+      ];
+    };
 
   # tasks = {
   #   "myproj:setup".exec = "mytool build";

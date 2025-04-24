@@ -29,14 +29,9 @@ Check [Caddyfile](Caddyfile) for an example configuration.
 
 ## Development
 
-If you modified the js file, you need to run the following command to rebundle the js file:
+If you modified any web asset, you need to run the following command to build the dist files:
 ```bash
-$ devenv tasks js:bundle
-```
-
-Also, you need to run the following command to recompile the template if modified:
-```bash
-$ devenv tasks go:codegen
+$ devenv tasks run dist:build
 ```
 
 Please run tests and lints before submitting a PR:
