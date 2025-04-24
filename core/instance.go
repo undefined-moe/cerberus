@@ -4,12 +4,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	AppName = "cerberus"
-	VarName = "cerberus-block"
-	Version = "v0.1.3"
-)
-
 // Instance is the shared core of the cerberus module.
 // There's only one instance of this struct in the entire Caddy runtime.
 type Instance struct {

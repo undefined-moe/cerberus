@@ -44,8 +44,6 @@ type Config struct {
 	Title string `json:"title,omitempty"`
 	// Mail is the email address to contact for support.
 	Mail string `json:"mail,omitempty"`
-	// Description is the description of the challenge page.
-	Description string `json:"description,omitempty"`
 	// PrefixCfg is to configure prefixes used to block users in these IP prefix blocks, e.g., /24 /64.
 	PrefixCfg ipblock.Config `json:"prefix_cfg,omitempty"`
 }
@@ -74,9 +72,6 @@ func (c *Config) Provision() {
 	}
 	if c.Title == "" {
 		c.Title = DefaultTitle
-	}
-	if c.Description == "" {
-		c.Description = DefaultDescription
 	}
 	if c.PrefixCfg.IsEmpty() {
 		c.PrefixCfg = ipblock.Config{

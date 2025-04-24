@@ -103,15 +103,6 @@ func (c *App) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 				return d.Errf("title must be a string")
 			}
 			c.Title = title
-		case "description":
-			if !d.NextArg() {
-				return d.ArgErr()
-			}
-			description, ok := d.ScalarVal().(string)
-			if !ok {
-				return d.Errf("description must be a string")
-			}
-			c.Description = description
 		case "prefix_cfg":
 			if !d.NextArg() {
 				return d.ArgErr()
@@ -187,10 +178,6 @@ func ParseCaddyFileMiddleware(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandl
 func (e *Endpoint) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	d.Next() // consume the directive
 
-	// TODO do we need this?
-	if d.NextArg() {
-		return d.Errf("too many arguments")
-	}
 	return nil
 }
 
