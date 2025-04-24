@@ -3,22 +3,32 @@ package cerberus
 import (
 	"time"
 
+	"github.com/caddyserver/caddy/v2/caddyconfig"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/dustin/go-humanize"
+	"github.com/sjtug/cerberus/internal/ipblock"
 )
 
-func (c *Cerberus) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
+func (c *App) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	d.Next() // consume the directive
 
 	for nesting := d.Nesting(); d.NextBlock(nesting); {
 		switch d.Val() {
+		case "instance_id":
+			if !d.NextArg() {
+				return d.ArgErr()
+			}
+			instanceID, ok := d.ScalarVal().(string)
+			if !ok {
+				return d.Errf("instance_id must be a string")
+			}
+			c.InstanceID = instanceID
 		case "difficulty":
 			if !d.NextArg() {
 				return d.ArgErr()
 			}
-			d.ScalarVal()
 			difficulty, ok := d.ScalarVal().(int)
 			if !ok {
 				return d.Errf("difficulty must be an integer")
@@ -125,7 +135,7 @@ func (c *Cerberus) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 			if !ok {
 				return d.Errf("prefix_cfg must be followed by two integers")
 			}
-			c.PrefixCfg = IPBlockConfig{
+			c.PrefixCfg = ipblock.Config{
 				V4Prefix: v4Prefix,
 				V6Prefix: v6Prefix,
 			}
@@ -137,8 +147,70 @@ func (c *Cerberus) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	return nil
 }
 
-func parseCaddyFile(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
-	var c Cerberus
-	err := c.UnmarshalCaddyfile(h.Dispenser)
-	return &c, err
+func parseCaddyFileApp(d *caddyfile.Dispenser, _ any) (any, error) {
+	var c App
+	err := c.UnmarshalCaddyfile(d)
+	return httpcaddyfile.App{
+		Name:  AppName,
+		Value: caddyconfig.JSON(c, nil),
+	}, err
+}
+
+func (m *Middleware) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
+	d.Next() // consume the directive
+
+	if !d.NextArg() {
+		return d.ArgErr()
+	}
+	instanceID, ok := d.ScalarVal().(string)
+	if !ok {
+		return d.Errf("instance_id must be a string")
+	}
+	m.InstanceID = instanceID
+
+	for nesting := d.Nesting(); d.NextBlock(nesting); {
+		switch d.Val() {
+		case "base_url":
+			if !d.NextArg() {
+				return d.ArgErr()
+			}
+			baseURL, ok := d.ScalarVal().(string)
+			if !ok {
+				return d.Errf("base_url must be a string")
+			}
+			m.BaseURL = baseURL
+		default:
+			return d.Errf("unknown subdirective '%s'", d.Val())
+		}
+	}
+	return nil
+}
+
+func parseCaddyFileMiddleware(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
+	var m Middleware
+	err := m.UnmarshalCaddyfile(h.Dispenser)
+	return &m, err
+}
+
+func (e *Endpoint) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
+	d.Next() // consume the directive
+
+	if !d.NextArg() {
+		return d.ArgErr()
+	}
+	instanceID, ok := d.ScalarVal().(string)
+	if !ok {
+		return d.Errf("instance_id must be a string")
+	}
+	e.InstanceID = instanceID
+	if d.NextArg() {
+		return d.Errf("too many arguments")
+	}
+	return nil
+}
+
+func parseCaddyFileEndpoint(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
+	var e Endpoint
+	err := e.UnmarshalCaddyfile(h.Dispenser)
+	return &e, err
 }

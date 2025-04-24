@@ -1,0 +1,101 @@
+package cerberus
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/sjtug/cerberus/internal/ipblock"
+)
+
+type Config struct {
+	// Challenge difficulty (number of leading zeroes in the hash).
+	Difficulty int `json:"difficulty,omitempty"`
+	// When set to true, the handler will drop the connection instead of returning a 403 if the IP is blocked.
+	Drop bool `json:"drop,omitempty"`
+	// MaxPending is the maximum number of pending (and failed) requests.
+	// Any IP block (prefix configured in prefix_cfg) with more than this number of pending requests will be blocked.
+	MaxPending int32 `json:"max_pending,omitempty"`
+	// BlockTTL is the time to live for blocked IPs.
+	BlockTTL time.Duration `json:"block_ttl,omitempty"`
+	// PendingTTL is the time to live for pending requests when considering whether to block an IP.
+	PendingTTL time.Duration `json:"pending_ttl,omitempty"`
+	// MaxMemUsage is the maximum memory usage for the pending and blocklist caches.
+	MaxMemUsage int64 `json:"max_mem_usage,omitempty"`
+	// CookieName is the name of the cookie used to store signed certificate.
+	CookieName string `json:"cookie_name,omitempty"`
+	// HeaderName is the name of the header used to store cerberus status ("PASS-BRIEF", "PASS-FULL", "BLOCK", "FAIL").
+	HeaderName string `json:"header_name,omitempty"`
+	// Title is the title of the challenge page.
+	Title string `json:"title,omitempty"`
+	// Description is the description of the challenge page.
+	Description string `json:"description,omitempty"`
+	// PrefixCfg is to configure prefixes used to block users in these IP prefix blocks, e.g., /24 /64.
+	PrefixCfg ipblock.Config `json:"prefix_cfg,omitempty"`
+}
+
+func (c *Config) Provision() {
+	if c.Difficulty == 0 {
+		c.Difficulty = DefaultDifficulty
+	}
+	if c.MaxPending == 0 {
+		c.MaxPending = DefaultMaxPending
+	}
+	if c.BlockTTL == time.Duration(0) {
+		c.BlockTTL = DefaultBlockTTL
+	}
+	if c.PendingTTL == time.Duration(0) {
+		c.PendingTTL = DefaultPendingTTL
+	}
+	if c.MaxMemUsage == 0 {
+		c.MaxMemUsage = DefaultMaxMemUsage
+	}
+	if c.CookieName == "" {
+		c.CookieName = DefaultCookieName
+	}
+	if c.HeaderName == "" {
+		c.HeaderName = DefaultHeaderName
+	}
+	if c.Title == "" {
+		c.Title = DefaultTitle
+	}
+	if c.Description == "" {
+		c.Description = DefaultDescription
+	}
+	if c.PrefixCfg.IsEmpty() {
+		c.PrefixCfg = ipblock.Config{
+			V4Prefix: DefaultIPV4Prefix,
+			V6Prefix: DefaultIPV6Prefix,
+		}
+	}
+}
+
+func (c *Config) Validate() error {
+	if c.Difficulty < 1 {
+		return errors.New("difficulty must be at least 1")
+	}
+	if c.MaxPending < 1 {
+		return errors.New("max_pending must be at least 1")
+	}
+	if c.BlockTTL < 0 {
+		return errors.New("block_ttl must be a positive duration")
+	}
+	if c.PendingTTL < 0 {
+		return errors.New("pending_ttl must be a positive duration")
+	}
+	if c.MaxMemUsage < 1 {
+		return errors.New("max_mem_usage must be at least 1")
+	}
+	if err := ipblock.ValidateConfig(c.PrefixCfg); err != nil {
+		return fmt.Errorf("prefix_cfg: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Config) StateCompatible(other *Config) bool {
+	return c.BlockTTL == other.BlockTTL &&
+		c.PendingTTL == other.PendingTTL &&
+		c.MaxMemUsage == other.MaxMemUsage &&
+		c.PrefixCfg == other.PrefixCfg
+}

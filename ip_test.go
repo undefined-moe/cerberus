@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/sjtug/cerberus/internal/ipblock"
 	"pgregory.net/rapid"
 )
 
@@ -32,8 +33,8 @@ func TestIpBlock_spec(t *testing.T) {
 	}).Filter(func(ip net.IP) bool {
 		return !ip.IsUnspecified()
 	})
-	cfgGen := rapid.Custom(func(t *rapid.T) IPBlockConfig {
-		return IPBlockConfig{
+	cfgGen := rapid.Custom(func(t *rapid.T) ipblock.Config {
+		return ipblock.Config{
 			V4Prefix: rapid.IntRange(1, 32).Draw(t, "v4_prefix"),
 			V6Prefix: rapid.IntRange(1, 64).Draw(t, "v6_prefix"),
 		}
@@ -54,7 +55,7 @@ func TestIpBlock_spec(t *testing.T) {
 			}
 		}
 
-		block, err := NewIPBlock(ip, cfg)
+		block, err := ipblock.NewIPBlock(ip, cfg)
 		if err != nil {
 			t.Fatalf("failed to create IPBlock: %v", err)
 		}

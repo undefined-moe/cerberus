@@ -1,18 +1,19 @@
 package cerberus
 
-templ BasicPage(title string, content string, challenge string, difficulty int, jscode string) {
+templ BasicPage(title string, content string, challenge string, difficulty int, baseURL string) {
 	<!DOCTYPE html>
 	<html>
 		<head>
 			<meta charset="UTF-8"/>
 			<title>{ title }</title>
+			<script async src={ baseURL + "/static/main.js" } type="module"></script>
 		</head>
 		<body>
 			<h1 id="title">{ title }</h1>
 			<div id="content">{ content }</div>
 			@templ.JSONScript("challenge", challenge)
 			@templ.JSONScript("difficulty", difficulty)
-			@templ.Raw("<script type=\"module\">" + jscode + "</script>")
+			@templ.JSONScript("baseURL", baseURL)
 		</body>
 	</html>
 }

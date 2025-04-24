@@ -1,23 +1,16 @@
 package cerberus
 
 import (
-	"crypto/ed25519"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"sync/atomic"
 	"time"
 	"unsafe"
 
 	"github.com/caddyserver/caddy/v2"
-	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
-	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
-	"github.com/dgraph-io/ristretto/v2"
-	"go.uber.org/zap"
 )
 
 const (
+	AppName            = "cerberus"
 	VarName            = "cerberus-block"
 	DefaultCookieName  = "cerberus-auth"
 	DefaultHeaderName  = "X-Cerberus-Status"
@@ -36,167 +29,12 @@ const (
 )
 
 func init() {
-	caddy.RegisterModule(Cerberus{})
-	httpcaddyfile.RegisterHandlerDirective("cerberus", parseCaddyFile)
+	caddy.RegisterModule(App{})
+	caddy.RegisterModule(Middleware{})
+	caddy.RegisterModule(Endpoint{})
+	httpcaddyfile.RegisterGlobalOption("cerberus", parseCaddyFileApp)
+	httpcaddyfile.RegisterHandlerDirective("cerberus", parseCaddyFileMiddleware)
+	httpcaddyfile.RegisterHandlerDirective("cerberus_endpoint", parseCaddyFileEndpoint)
+	httpcaddyfile.RegisterDirectiveOrder("cerberus", httpcaddyfile.Before, "invoke")
+	httpcaddyfile.RegisterDirectiveOrder("cerberus_endpoint", httpcaddyfile.Before, "invoke")
 }
-
-type Cerberus struct {
-	// Challenge difficulty (number of leading zeroes in the hash).
-	Difficulty int `json:"difficulty,omitempty"`
-	// When set to true, the handler will drop the connection instead of returning a 403 if the IP is blocked.
-	Drop bool `json:"drop,omitempty"`
-	// MaxPending is the maximum number of pending (and failed) requests.
-	// Any IP block (prefix configured in prefix_cfg) with more than this number of pending requests will be blocked.
-	MaxPending int32 `json:"max_pending,omitempty"`
-	// BlockTTL is the time to live for blocked IPs.
-	BlockTTL time.Duration `json:"block_ttl,omitempty"`
-	// PendingTTL is the time to live for pending requests when considering whether to block an IP.
-	PendingTTL time.Duration `json:"pending_ttl,omitempty"`
-	// MaxMemUsage is the maximum memory usage for the pending and blocklist caches.
-	MaxMemUsage int64 `json:"max_mem_usage,omitempty"`
-	// CookieName is the name of the cookie used to store signed certificate.
-	CookieName string `json:"cookie_name,omitempty"`
-	// HeaderName is the name of the header used to store cerberus status ("PASS-BRIEF", "PASS-FULL", "BLOCK", "FAIL").
-	HeaderName string `json:"header_name,omitempty"`
-	// Title is the title of the challenge page.
-	Title string `json:"title,omitempty"`
-	// Description is the description of the challenge page.
-	Description string `json:"description,omitempty"`
-	// PrefixCfg is to configure prefixes used to block users in these IP prefix blocks, e.g., /24 /64.
-	PrefixCfg IPBlockConfig `json:"prefix_cfg,omitempty"`
-	logger    *zap.Logger
-	pub       ed25519.PublicKey
-	priv      ed25519.PrivateKey
-	pending   *ristretto.Cache[uint64, *atomic.Int32]
-	blocklist *ristretto.Cache[uint64, struct{}]
-}
-
-func (c *Cerberus) Provision(context caddy.Context) error {
-	if c.Difficulty == 0 {
-		c.Difficulty = DefaultDifficulty
-	}
-	if c.MaxPending == 0 {
-		c.MaxPending = DefaultMaxPending
-	}
-	if c.BlockTTL == time.Duration(0) {
-		c.BlockTTL = DefaultBlockTTL
-	}
-	if c.PendingTTL == time.Duration(0) {
-		c.PendingTTL = DefaultPendingTTL
-	}
-	if c.MaxMemUsage == 0 {
-		c.MaxMemUsage = DefaultMaxMemUsage
-	}
-	if c.CookieName == "" {
-		c.CookieName = DefaultCookieName
-	}
-	if c.HeaderName == "" {
-		c.HeaderName = DefaultHeaderName
-	}
-	if c.Title == "" {
-		c.Title = DefaultTitle
-	}
-	if c.Description == "" {
-		c.Description = DefaultDescription
-	}
-	if c.PrefixCfg.IsEmpty() {
-		c.PrefixCfg = IPBlockConfig{
-			V4Prefix: DefaultIPV4Prefix,
-			V6Prefix: DefaultIPV6Prefix,
-		}
-	}
-
-	c.logger = context.Logger()
-
-	if c.pub == nil || c.priv == nil {
-		pub, priv, err := ed25519.GenerateKey(nil)
-		if err != nil {
-			return err
-		}
-		c.pub = pub
-		c.priv = priv
-	}
-
-	pendingCost := c.MaxMemUsage - c.MaxMemUsage/8                             // 7/8 for pending list
-	pendingCounters, pendingElems := cacheParams(pendingCost, PendingItemCost) // 4 bytes for counter + internal cost
-	pending, err := ristretto.NewCache(&ristretto.Config[uint64, *atomic.Int32]{
-		NumCounters:        pendingCounters,
-		MaxCost:            pendingCost,
-		BufferItems:        64,
-		IgnoreInternalCost: true, // We have a more accurate cost calculation
-	})
-	if err != nil {
-		return err
-	}
-	c.pending = pending
-
-	blocklistCost := c.MaxMemUsage / 8 // 1/8 for blocklist
-	blocklistCounters, blocklistElems := cacheParams(blocklistCost, BlocklistItemCost)
-	blocklist, err := ristretto.NewCache(&ristretto.Config[uint64, struct{}]{
-		NumCounters:        blocklistCounters,
-		MaxCost:            blocklistCost,
-		BufferItems:        64,
-		IgnoreInternalCost: true, // We have a more accurate cost calculation
-	})
-	if err != nil {
-		return err
-	}
-	c.blocklist = blocklist
-
-	c.logger.Info("cerberus cache initialized",
-		zap.Int64("max_pending", pendingElems),
-		zap.Int64("max_blocklist", blocklistElems),
-	)
-
-	return nil
-}
-
-func cacheParams(allowedUsage int64, costPerElem int64) (int64, int64) {
-	elems := allowedUsage / (3*10 + costPerElem)
-	numCounters := 10 * elems
-
-	return numCounters, elems
-}
-
-func (c *Cerberus) Validate() error {
-	if c.Difficulty < 1 {
-		return errors.New("difficulty must be at least 1")
-	}
-	if c.MaxPending < 1 {
-		return errors.New("max_pending must be at least 1")
-	}
-	if c.BlockTTL < 0 {
-		return errors.New("block_ttl must be a positive duration")
-	}
-	if c.PendingTTL < 0 {
-		return errors.New("pending_ttl must be a positive duration")
-	}
-	if c.MaxMemUsage < 1 {
-		return errors.New("max_mem_usage must be at least 1")
-	}
-	if err := ValidateIPBlockConfig(c.PrefixCfg); err != nil {
-		return fmt.Errorf("prefix_cfg: %w", err)
-	}
-
-	marshalled, err := json.Marshal(c)
-	if err != nil {
-		return err
-	}
-	c.logger.Debug("cerberus config", zap.String("config", string(marshalled)))
-
-	return nil
-}
-
-func (Cerberus) CaddyModule() caddy.ModuleInfo {
-	return caddy.ModuleInfo{
-		ID:  "http.handlers.cerberus",
-		New: func() caddy.Module { return new(Cerberus) },
-	}
-}
-
-var (
-	_ caddy.Provisioner           = (*Cerberus)(nil)
-	_ caddy.Validator             = (*Cerberus)(nil)
-	_ caddyhttp.MiddlewareHandler = (*Cerberus)(nil)
-	_ caddyfile.Unmarshaler       = (*Cerberus)(nil)
-)

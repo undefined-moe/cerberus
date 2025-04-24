@@ -24,7 +24,7 @@ const u = (url = "", params = {}) => {
 
   const challenge = JSON.parse(document.getElementById('challenge').textContent);
   const difficulty = JSON.parse(document.getElementById('difficulty').textContent);
-
+  const baseURL = JSON.parse(document.getElementById('baseURL').textContent);
   const t0 = Date.now();
   const { hash, nonce } = await pow(challenge, difficulty);
   const t1 = Date.now();
@@ -36,9 +36,32 @@ const u = (url = "", params = {}) => {
   // spinner.innerHTML = "";
   // spinner.style.display = "none";
 
+  // Create and submit a form with POST method
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `${baseURL}/answer`;
+  
+  const responseInput = document.createElement('input');
+  responseInput.type = 'hidden';
+  responseInput.name = 'response';
+  responseInput.value = hash;
+  
+  const nonceInput = document.createElement('input');
+  nonceInput.type = 'hidden';
+  nonceInput.name = 'nonce';
+  nonceInput.value = nonce;
+
+  const redirInput = document.createElement('input');
+  redirInput.type = 'hidden';
+  redirInput.name = 'redir';
+  redirInput.value = window.location.href;
+  
+  form.appendChild(responseInput);
+  form.appendChild(nonceInput);
+  form.appendChild(redirInput);
+  document.body.appendChild(form);
+  
   setTimeout(() => {
-    const redir = window.location.href;
-    const url = window.location.origin + window.location.pathname;
-    window.location.href = u(url, { cerberus: true, response: hash, nonce, redir });
+    form.submit();
   }, 250);
 })();

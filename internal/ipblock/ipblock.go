@@ -1,4 +1,4 @@
-package cerberus
+package ipblock
 
 import (
 	"errors"
@@ -16,18 +16,18 @@ type IPBlock struct {
 
 // IPBlockConfig represents the configuration for an IPBlock.
 // It's used to specify the prefix length for IPv4 and IPv6 blocks for IP blocking.
-type IPBlockConfig struct {
+type Config struct {
 	// V4Prefix is the prefix length for IPv4 blocks
 	V4Prefix int `json:"v4_prefix"`
 	// V6Prefix is the prefix length for IPv6 blocks
 	V6Prefix int `json:"v6_prefix"`
 }
 
-func (c IPBlockConfig) IsEmpty() bool {
+func (c Config) IsEmpty() bool {
 	return c.V4Prefix == 0 && c.V6Prefix == 0
 }
 
-func ValidateIPBlockConfig(cfg IPBlockConfig) error {
+func ValidateConfig(cfg Config) error {
 	if cfg.V4Prefix > 32 || cfg.V4Prefix < 1 {
 		return fmt.Errorf("v4_prefix must be between 1 and 32, got %d", cfg.V4Prefix)
 	} else if cfg.V6Prefix > 64 || cfg.V6Prefix < 1 {
@@ -38,7 +38,7 @@ func ValidateIPBlockConfig(cfg IPBlockConfig) error {
 }
 
 // NewIPBlock creates a new IPBlock from an IP address
-func NewIPBlock(ip net.IP, cfg IPBlockConfig) (IPBlock, error) {
+func NewIPBlock(ip net.IP, cfg Config) (IPBlock, error) {
 	if ip == nil {
 		return IPBlock{}, errors.New("invalid IP: nil")
 	}
@@ -57,13 +57,17 @@ func NewIPBlock(ip net.IP, cfg IPBlockConfig) (IPBlock, error) {
 	}
 	ip6 = ip6.Mask(net.CIDRMask(cfg.V6Prefix, 128))
 	data := uint64(0)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		data = data<<8 | uint64(ip6[i])
 	}
 	return IPBlock{data: data}, nil
 }
 
-func (b IPBlock) ToIPNet(cfg IPBlockConfig) *net.IPNet {
+func (b IPBlock) ToUint64() uint64 {
+	return b.data
+}
+
+func (b IPBlock) ToIPNet(cfg Config) *net.IPNet {
 	if b.data&0xffffffff00000000 == 0x20010db800000000 {
 		return &net.IPNet{
 			IP:   net.IPv4(byte(b.data>>24&0xff), byte(b.data>>16&0xff), byte(b.data>>8&0xff), byte(b.data&0xff)),
@@ -72,7 +76,7 @@ func (b IPBlock) ToIPNet(cfg IPBlockConfig) *net.IPNet {
 	}
 
 	ip := make(net.IP, 16)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		ip[7-i] = byte(b.data >> (8 * i))
 	}
 	return &net.IPNet{
