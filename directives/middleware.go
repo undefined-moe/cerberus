@@ -79,7 +79,7 @@ func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 		web.Challenge(challenge, c.Difficulty),
 	)
 	templ.Handler(
-		web.Base("Cerberus Challenge"),
+		web.Base(c.Title),
 	).ServeHTTP(w, r.WithContext(ctx))
 
 	return nil
