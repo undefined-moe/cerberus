@@ -1,9 +1,14 @@
 # Cerberus
 
+<center>
+   <img width=256 src="./web/img/mascot-puzzle.png" alt="A smiling chibi dark-skinned anthro jackal with brown hair and tall ears looking victorious with a thumbs-up" />
+</center>
+
 Caddy plugin version of [Anubis](https://github.com/TecharoHQ/anubis/).
 
 This plugin provides a Caddy handler that blocks unwanted requests using a sha256 PoW challenge.
-It's not a full replacement for Anubis, but most of the features are there.
+
+While Anubis focuses on protecting websites from AI scrapers, Cerberus serves a different purpose: it's designed as a last line of defense to protect volunteer-run open source infrastructure from aggressive PCDN attacks. Different design decisions were made to achieve this goal.
 
 ## Usage
 
@@ -16,16 +21,13 @@ It's not a full replacement for Anubis, but most of the features are there.
 ## Comparison with Anubis
 
 - Anubis is a standalone server that can be used with any web server, while Cerberus is a Caddy plugin.
-- No support for custom rules: use caddy matchers instead.
-- No custom UI or anime girls.
-- Scripts and parameters are inlined in HTML.
-- No separate endpoint for challenge response: any query with `?cerberus` will be treated as a challenge response.
+- No builtin anti-AI rules: use caddy matchers instead.
+- Can be set up to block IP subnets if there are too many failed challenge attempts to prevent abuse.
+- ~~No custom UI or anime girls.~~ Now with an AI-generated placeholder mascot lol
 
 ## Configuration
 
 Check [Caddyfile](Caddyfile) for an example configuration.
-
-*WARNING*: Each cerberus directive will create a new instance of the handler. This means that if you have multiple cerberus directives, each one will have its own internal state and consume memory. Please use the `cerberus` directive only once per site.
 
 ## Development
 
