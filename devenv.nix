@@ -33,7 +33,7 @@
         "${esbuild} ./web/js/main.mjs --bundle --minify --outfile=./web/dist/main.mjs --allow-overwrite";
       "img:dist".exec = ''
         mkdir -p ./web/dist/img
-        ${find} ./web/img -maxdepth 1 -name "*.png" -printf "%f\n" | ${xargs} -n 1 sh -c '${pngquant} --force --strip ./web/img/$0 -o ./web/dist/img/$0'
+        ${find} ./web/img -maxdepth 1 -name "*.png" -printf "%f\n" | ${xargs} -n 1 sh -c '${pngquant} --force --strip --quality 0-20 --speed 1 ./web/img/$0 -o ./web/dist/img/$0'
       '';
       "go:codegen".exec = "${templ} generate";
       "dist:clean".exec = "rm -rf ./web/dist";

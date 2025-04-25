@@ -66,7 +66,7 @@ templ Challenge(challenge string, difficulty int) {
 				resources inaccessible for everyone.
 			</p>
 			<p>
-				You may have heard of <a href="https://github.com/TecharoHQ/anubis" class="text-pink-600 hover:text-pink-700">Anubis</a>, a similar project from <a href="https://techaro.lol" class="text-pink-600 hover:text-pink-700">Techaro</a>. Cerberus is a port of Anubis to Caddy. While Anubis is used to protect websites against AI scrapers, Cerberus is designed with the following goal in mind: it's the final resort to protect volunteer-run open source infrastructure from crazy PCDN attacks.
+				If you're familiar with <a href="https://github.com/TecharoHQ/anubis" class="text-pink-600 hover:text-pink-700">Anubis</a> by <a href="https://techaro.lol" class="text-pink-600 hover:text-pink-700">Techaro</a>, Cerberus is similar - it's a port of Anubis built for Caddy. But while Anubis focuses on protecting websites from AI scrapers, Cerberus serves a different purpose: it's designed as a last line of defense to protect volunteer-run open source infrastructure from aggressive PCDN attacks.
 			</p>
 			<p>
 				Please note that Cerberus requires the use of modern JavaScript features that plugins like <a
@@ -78,9 +78,7 @@ templ Challenge(challenge string, difficulty int) {
 	</details>
 	<noscript>
 		<p>
-			Sadly, you must enable JavaScript to get past this challenge. This is required because AI companies have
-			changed
-			the social contract around how website hosting works. A no-JS solution is a work-in-progress.
+			You must enable JavaScript to get past this challenge.
 		</p>
 	</noscript>
 	@templ.JSONScript("challenge", challenge)
