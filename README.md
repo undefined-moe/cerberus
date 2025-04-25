@@ -4,11 +4,11 @@
    <img width=256 src="./web/img/mascot-puzzle.png" alt="A smiling chibi dark-skinned anthro jackal with brown hair and tall ears looking victorious with a thumbs-up" />
 </center>
 
-Caddy plugin version of [Anubis](https://github.com/TecharoHQ/anubis/).
+Cerberus guards the gates of open source infrastructure using a sha256 PoW challenge to protect them from unwanted traffic. It provides a Caddy handler that can be applied to existing Caddy servers.
 
-This plugin provides a Caddy handler that blocks unwanted requests using a sha256 PoW challenge.
+This project started as a Caddy port of [Anubis](https://github.com/TecharoHQ/anubis/) and is now a standalone project. While Anubis focuses on protecting websites from AI scrapers, Cerberus serves a different purpose: it's designed as a last line of defense to protect volunteer-run open source infrastructure from aggressive PCDN attacks. We would do whatever it takes to stop them, even if it means sacrificing a few innocent cats.
 
-While Anubis focuses on protecting websites from AI scrapers, Cerberus serves a different purpose: it's designed as a last line of defense to protect volunteer-run open source infrastructure from aggressive PCDN attacks. Different design decisions were made to achieve this goal.
+For now, the project is still mostly a re-implementation of Anubis, but it's actively developed, and will eventually employ more aggressive techniques. You can check the [Roadmap](#roadmap) section for more details.
 
 ## Usage
 
@@ -28,6 +28,16 @@ While Anubis focuses on protecting websites from AI scrapers, Cerberus serves a 
 ## Configuration
 
 Check [Caddyfile](Caddyfile) for an example configuration.
+
+## Roadmap
+
+- [ ] More frequent challenges (each solution only grants a few accesses): stateful challenge
+- [ ] More frequent challenge rotation (per week -> per request)
+- [ ] Configurable challenge difficulty for each route
+- [ ] block_only" mode to serve as a blocklist even a route is not protected by PoW challenge
+- [ ] RandomX PoW
+- [ ] I18n
+- [ ] Non-AI mascot
 
 ## Development
 
