@@ -22,6 +22,7 @@ For now, the project is still mostly a re-implementation of Anubis, but it's act
 
 - Anubis is a standalone server that can be used with any web server, while Cerberus is a Caddy plugin.
 - No builtin anti-AI rules: use caddy matchers instead.
+- Highly aggressive challenge policy: users need to solve a challenge for every few requests and new challenges are generated per request. For further details, see the [Aggressive challenge policy](#aggressive-challenge-policy) section.
 - Can be set up to block IP subnets if there are too many failed challenge attempts to prevent abuse.
 - ~~No custom UI or anime girls.~~ Now with an AI-generated placeholder mascot lol
 
@@ -31,13 +32,19 @@ Check [Caddyfile](Caddyfile) for an example configuration.
 
 ## Roadmap
 
-- [ ] More frequent challenges (each solution only grants a few accesses): stateful challenge
-- [ ] More frequent challenge rotation (per week -> per request)
+- [x] More frequent challenges (each solution only grants a few accesses)
+- [x] More frequent challenge rotation (per week -> per request)
 - [ ] Configurable challenge difficulty for each route
 - [ ] block_only" mode to serve as a blocklist even a route is not protected by PoW challenge
 - [ ] RandomX PoW
 - [ ] I18n
 - [ ] Non-AI mascot
+
+## Aggressive challenge policy
+
+This is the first divergence from Anubis. Now, we require a user to repeat the challenge every few accesses. This is to ensure that we waste an attacker's computational resources to the extent that it becomes non-sustainable for the attacker to perform the attack.
+
+This will surely slow down legitimate users, but we believe that this is a necessary evil to protect our infrastructure. After all, a slow down is better than a complete outage.
 
 ## Development
 
