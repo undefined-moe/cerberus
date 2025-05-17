@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/invopop/ctxi18n"
 	"github.com/invopop/ctxi18n/i18n"
 	"github.com/sjtug/cerberus/core"
@@ -146,6 +148,12 @@ func setupLocale(r *http.Request) (*http.Request, error) {
 	ctx = context.WithValue(ctx, web.LocaleCtxKey, locale)
 
 	return r.WithContext(ctx), nil
+}
+
+func setupRequestID(r *http.Request) *http.Request {
+	id := uuid.New().String()
+	caddyhttp.SetVar(r.Context(), core.VarReqID, id)
+	return r
 }
 
 func renderTemplate(w http.ResponseWriter, r *http.Request, c *core.Config, baseURL string, header string, child templ.Component, opts ...func(*templ.ComponentHandler)) error {

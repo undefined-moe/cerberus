@@ -43,7 +43,7 @@ func getClientIP(r *http.Request) string {
 func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 	c := m.instance
 
-	ipBlockRaw := caddyhttp.GetVar(r.Context(), core.VarName)
+	ipBlockRaw := caddyhttp.GetVar(r.Context(), core.VarIPBlock)
 	if ipBlockRaw != nil {
 		ipBlock := ipBlockRaw.(ipblock.IPBlock)
 
@@ -77,6 +77,7 @@ func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
+	r = setupRequestID(r)
 	r, err := setupLocale(r)
 	if err != nil {
 		return err
@@ -85,7 +86,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 	c := m.instance
 
 	if ipBlock, err := ipblock.NewIPBlock(net.ParseIP(getClientIP(r)), c.PrefixCfg); err == nil {
-		caddyhttp.SetVar(r.Context(), core.VarName, ipBlock)
+		caddyhttp.SetVar(r.Context(), core.VarIPBlock, ipBlock)
 		if c.ContainsBlocklist(ipBlock) {
 			m.logger.Debug("IP is blocked", zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()))
 			return respondFailure(w, r, &c.Config, "", true, http.StatusForbidden, m.BaseURL)
