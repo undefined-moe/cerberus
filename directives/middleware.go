@@ -72,6 +72,7 @@ func (m *Middleware) invokeAuth(w http.ResponseWriter, r *http.Request) error {
 	ts := time.Now().Unix()
 	signature := calcSignature(challenge, nonce, ts, c)
 
+	w.Header().Set(c.HeaderName, "CHALLENGE")
 	return renderTemplate(w, r, &c.Config, m.BaseURL, i18n.T(r.Context(), "challenge.title"), web.Challenge(challenge, c.Difficulty, nonce, ts, signature))
 }
 

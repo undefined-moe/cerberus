@@ -156,6 +156,7 @@ func (e *Endpoint) answerHandle(w http.ResponseWriter, r *http.Request) error {
 		c.DecPending(ipBlock)
 	}
 
+	w.Header().Set(c.HeaderName, "PASS")
 	http.Redirect(w, r, redir, http.StatusSeeOther)
 	return nil
 }
