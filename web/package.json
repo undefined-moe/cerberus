@@ -6,7 +6,7 @@
     "browserslist": "last 2 versions, not dead, > 0.2%",
     "type": "module",
     "scripts": {
-      "build": "vite build && rm dist/index.html"
+        "build": "vite build && rm dist/index.html"
     },
     "dependencies": {
         "@messageformat/convert": "^1.0.0",
@@ -14,6 +14,7 @@
         "@messageformat/runtime": "^3.0.1",
         "glob": "^11.0.2",
         "pow-wasm": "file:../pow/pkg",
+        "tailwindcss": "^4.1.7",
         "yaml": "^2.7.1"
     },
     "devDependencies": {

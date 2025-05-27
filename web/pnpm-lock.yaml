@@ -23,6 +23,9 @@ importers:
       pow-wasm:
         specifier: file:../pow/pkg
         version: pow@file:../pow/pkg
+      tailwindcss:
+        specifier: ^4.1.7
+        version: 4.1.7
       yaml:
         specifier: ^2.7.1
         version: 2.8.0
