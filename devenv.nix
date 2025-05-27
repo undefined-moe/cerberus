@@ -49,10 +49,13 @@
           "js:icu"
         ];
       };
-      "img:dist".exec = ''
-        mkdir -p ./web/dist/img
-        ${find} ./web/img -maxdepth 1 -name "*.png" -printf "%f\n" | ${xargs} -n 1 sh -c '${pngquant} --force --strip --quality 0-20 --speed 1 ./web/img/$0 -o ./web/dist/img/$0'
-      '';
+      "img:dist" = {
+        exec = ''
+          mkdir -p ./web/dist/img
+          ${find} ./web/img -maxdepth 1 -name "*.png" -printf "%f\n" | ${xargs} -n 1 sh -c '${pngquant} --force --strip --quality 0-20 --speed 1 ./web/img/$0 -o ./web/dist/img/$0'
+        '';
+        after = [ "js:bundle" ];
+      };
       "go:codegen".exec = "${templ} generate";
       "js:icu" = {
         exec = ''
@@ -70,7 +73,7 @@
       ];
       "go:lint" = {
         exec = "${golangci-lint} run";
-        after = [ "go:codegen" ];
+        after = [ "go:codegen" "img:dist" ];
       };
     };
 
