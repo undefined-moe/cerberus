@@ -48,6 +48,7 @@
           "js:install"
           "js:icu"
         ];
+        before = [ "img:dist" ];
       };
       "img:dist".exec = ''
         mkdir -p ./web/dist/img

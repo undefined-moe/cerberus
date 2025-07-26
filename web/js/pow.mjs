@@ -1,4 +1,5 @@
 import PowWorker from './pow.worker.js?worker&inline';
+import wasmUrl from "pow-wasm/pow_bg.wasm?url";
 
 export default async function process(
   data,
@@ -9,7 +10,7 @@ export default async function process(
 ) {
   const workers = [];
   try {
-    const wasmModule = await (await fetch(new URL('pow-wasm/pow_bg.wasm', import.meta.url))).arrayBuffer();
+    const wasmModule = await (await fetch(wasmUrl)).arrayBuffer();
     return await Promise.race(Array(threads).fill(0).map((i, idx) => new Promise((resolve, reject) => {
       const worker = new PowWorker();
       worker.onmessage = ({ data }) => (typeof data === "number" ? progressCallback : resolve)?.(data);

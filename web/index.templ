@@ -14,7 +14,13 @@ const (
 	BaseURLCtxKey contextKeyType = iota
 	VersionCtxKey
 	LocaleCtxKey
+	AssetsCtxKey
 )
+
+type Assets struct {
+	JS string `json:"js"`
+	CSS string `json:"css"`
+}
 
 templ T(key string, args ...any) {
 	{ i18n.T(ctx, key, args...) }
@@ -36,6 +42,10 @@ func GetLocale(ctx context.Context) string {
 	return ctx.Value(LocaleCtxKey).(string)
 }
 
+func GetAssets(ctx context.Context) Assets {
+	return ctx.Value(AssetsCtxKey).(Assets)
+}
+
 func GetRequestID(ctx context.Context) string {
 	return caddyhttp.GetVar(ctx, core.VarReqID).(string)
 }
@@ -47,7 +57,7 @@ templ Base(title string, header string) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title }</title>
-			<link rel="stylesheet" href={ GetBaseURL(ctx) + "/static/global.css?v=" + GetVersion(ctx) }/>
+			<link rel="stylesheet" href={ caddyhttp.SanitizedPathJoin(GetBaseURL(ctx) + "/static", GetAssets(ctx).CSS) }/>
 		</head>
 		<body class="min-h-screen flex flex-col items-center justify-center p-4 bg-[#fff8e7]">
 			<div class="text-center text-lg my-auto max-w-2xl w-full px-4">
@@ -132,7 +142,7 @@ templ Challenge(challenge string, difficulty int, nonce uint32, ts int64, signat
 			@T("challenge.must_enable_js")
 		</p>
 	</noscript>
-	<script async defer id="challenge-script" x-meta={ templ.JSONString(metaInput) } x-challenge={ templ.JSONString(challengeInput) } src={ relPath("/static/main.js") }></script>
+	<script async defer type="module" id="challenge-script" x-meta={ templ.JSONString(metaInput) } x-challenge={ templ.JSONString(challengeInput) } src={ caddyhttp.SanitizedPathJoin(baseURL + "/static", GetAssets(ctx).JS) }></script>
 }
 
 templ Error(message string, description string, mail string) {

@@ -6,7 +6,7 @@
     "browserslist": "last 2 versions, not dead, > 0.2%",
     "type": "module",
     "scripts": {
-        "build": "vite build && rm dist/index.html"
+        "build": "vite build && node js/collect_assets.mjs dist/index.html dist/index.json && rm dist/index.html"
     },
     "dependencies": {
         "@messageformat/convert": "^1.0.0",
