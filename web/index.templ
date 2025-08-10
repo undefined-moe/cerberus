@@ -1,0 +1,157 @@
+package web
+
+import (
+	"context"
+
+	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/sjtug/cerberus/core"
+)
+
+type contextKeyType int
+
+const (
+	BaseURLCtxKey contextKeyType = iota
+	VersionCtxKey
+	LocaleCtxKey
+	AssetsCtxKey
+)
+
+type Assets struct {
+	JS string `json:"js"`
+	CSS string `json:"css"`
+}
+
+templ T(key string, args ...any) {
+	{ i18n.T(ctx, key, args...) }
+}
+
+templ UnsafeT(key string, args ...any) {
+	@templ.Raw(i18n.T(ctx, key, args...))
+}
+
+func GetBaseURL(ctx context.Context) string {
+	return ctx.Value(BaseURLCtxKey).(string)
+}
+
+func GetVersion(ctx context.Context) string {
+	return ctx.Value(VersionCtxKey).(string)
+}
+
+func GetLocale(ctx context.Context) string {
+	return ctx.Value(LocaleCtxKey).(string)
+}
+
+func GetAssets(ctx context.Context) Assets {
+	return ctx.Value(AssetsCtxKey).(Assets)
+}
+
+func GetRequestID(ctx context.Context) string {
+	return caddyhttp.GetVar(ctx, core.VarReqID).(string)
+}
+
+templ Base(title string, header string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title }</title>
+			<link rel="stylesheet" href={ caddyhttp.SanitizedPathJoin(GetBaseURL(ctx) + "/static", GetAssets(ctx).CSS) }/>
+		</head>
+		<body class="min-h-screen flex flex-col items-center justify-center p-4 bg-[#fff8e7]">
+			<div class="text-center text-lg my-auto max-w-2xl w-full px-4">
+				<h1 id="title" class="text-4xl font-bold mb-6">{ header }</h1>
+				{ children... }
+				<p class="text-gray-700 mt-4">
+					@UnsafeT("footer.author", i18n.M{
+						"cerberus": `<a href="https://github.com/SJTUG/cerberus" class="text-amber-600 hover:text-amber-700">Cerberus</a>`,
+						"sjtug":    `<a href="https://sjtug.org" class="text-amber-600 hover:text-amber-700">SJTUG</a>`})
+				</p>
+				<p class="text-gray-700 text-sm">
+					@UnsafeT("footer.upstream", i18n.M{
+						"anubis":  `<a href="https://github.com/TecharoHQ/anubis" class="text-amber-600 hover:text-amber-700">Anubis</a>`,
+						"techaro": `<a href="https://techaro.lol" class="text-amber-600 hover:text-amber-700">Techaro</a>`})
+				</p>
+			</div>
+			<p class="text-gray-700 text-sm pt-2">
+				request_id: { GetRequestID(ctx) }
+			</p>
+		</body>
+	</html>
+}
+
+templ Challenge(challenge string, difficulty int, nonce uint32, ts int64, signature string) {
+	{{
+		challengeInput := struct {
+			Challenge  string `json:"challenge"`
+			Difficulty int    `json:"difficulty"`
+			Nonce      uint32 `json:"nonce"`
+			TS         int64  `json:"ts"`
+			Signature  string `json:"signature"`
+		}{challenge, difficulty, nonce, ts, signature}
+
+		baseURL := GetBaseURL(ctx)
+		version := GetVersion(ctx)
+		locale := GetLocale(ctx)
+		metaInput := struct {
+			BaseURL string `json:"baseURL"`
+			Version string `json:"version"`
+			Locale  string `json:"locale"`
+		}{baseURL, version, locale}
+
+		relPath := func(path string) string {
+			return baseURL + path + "?v=" + version
+		}
+	}}
+	<img id="mascot" src={ relPath("/static/img/mascot-puzzle.png") } alt="Cute anime mascot character" class="mx-auto p-4 mb-2 max-w-64"/>
+	<div id="status-container">
+		<p id="status" class="text-gray-700 mb-1">status</p>
+		<p id="metrics" class="text-gray-700 mb-1">metrics</p>
+		<p id="message" class="text-gray-700 mb-2">message</p>
+		<!-- Progress Bar (hidden in success state) -->
+		<div id="progress-container" class="w-48 h-6 bg-white rounded-full border-2 border-[#b79ecf] p-1 mt-2 mb-4 mx-auto">
+			<div id="progress-bar" class="h-full w-[60%] bg-[#b79ecf] rounded-full transition-all duration-300"></div>
+		</div>
+	</div>
+	<details class="mb-4">
+		<summary class="cursor-pointer text-gray-600 hover:text-gray-800">
+			@T("challenge.why_seeing")
+		</summary>
+		<div class="mt-2 text-base text-gray-600 space-y-2">
+			<p>
+				@UnsafeT("challenge.why_seeing_body.part_1", i18n.M{
+					"cerberus": `<a href="https://github.com/SJTUG/cerberus" class="text-amber-600 hover:text-amber-700">Cerberus</a>`,
+				})
+			</p>
+			<p>
+				@UnsafeT("challenge.why_seeing_body.part_2", i18n.M{
+					"anubis":  `<a href="https://github.com/TecharoHQ/anubis" class="text-amber-600 hover:text-amber-700">Anubis</a>`,
+					"techaro": `<a href="https://techaro.lol" class="text-amber-600 hover:text-amber-700">Techaro</a>`,
+				})
+			</p>
+			<p>
+				@UnsafeT("challenge.why_seeing_body.part_3", i18n.M{
+					"jshelter": `<a href="https://jshelter.org/" class="text-amber-600 hover:text-amber-700">JShelter</a>`,
+				})
+			</p>
+		</div>
+	</details>
+	<noscript>
+		<p>
+			@T("challenge.must_enable_js")
+		</p>
+	</noscript>
+	<script async defer type="module" id="challenge-script" x-meta={ templ.JSONString(metaInput) } x-challenge={ templ.JSONString(challengeInput) } src={ caddyhttp.SanitizedPathJoin(baseURL + "/static", GetAssets(ctx).JS) }></script>
+}
+
+templ Error(message string, description string, mail string) {
+	<img id="mascot" src={ GetBaseURL(ctx) + "/static/img/mascot-fail.png?v=" + GetVersion(ctx) } alt="Cute anime mascot character with a sad face" class="mx-auto p-4 mb-2 max-w-64"/>
+	<p id="message" class="text-gray-700 mb-2">{ message }</p>
+	<p id="description" class="text-gray-700 mb-2">{ description }</p>
+	if mail != "" {
+		<p class="text-gray-700 mb-4">
+			@UnsafeT("error.contact_us", i18n.M{"mail": `<a href="mailto:` + mail + `" class="text-amber-600 hover:text-amber-700">` + mail + `</a>`})
+		</p>
+	}
+}
