@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -157,6 +158,21 @@ func setupRequestID(r *http.Request) *http.Request {
 	id := uuid.New().String()
 	caddyhttp.SetVar(r.Context(), core.VarReqID, id)
 	return r
+}
+
+func setupAssets(r *http.Request) *http.Request {
+	rawAssets, err := web.Content.ReadFile("dist/index.json")
+	if err != nil {
+		panic(err)
+	}
+
+	var assets web.Assets
+	err = json.Unmarshal(rawAssets, &assets)
+	if err != nil {
+		panic(err)
+	}
+
+	return r.WithContext(context.WithValue(r.Context(), web.AssetsCtxKey, assets))
 }
 
 func renderTemplate(w http.ResponseWriter, r *http.Request, c *core.Config, baseURL string, header string, child templ.Component, opts ...func(*templ.ComponentHandler)) error {
