@@ -7,7 +7,6 @@
     xcaddy
     templ
     golangci-lint
-    pngquant
     wasm-pack
   ];
 
@@ -19,9 +18,6 @@
 
   tasks =
     let
-      find = "${pkgs.findutils}/bin/find";
-      xargs = "${pkgs.findutils}/bin/xargs";
-      pngquant = "${pkgs.pngquant}/bin/pngquant";
       templ = "${pkgs.templ}/bin/templ";
       wasm-pack = "${pkgs.wasm-pack}/bin/wasm-pack";
       pnpm = "${pkgs.nodePackages.pnpm}/bin/pnpm";
@@ -48,12 +44,7 @@
           "js:install"
           "js:icu"
         ];
-        before = [ "img:dist" ];
       };
-      "img:dist".exec = ''
-        mkdir -p ./web/dist/img
-        ${find} ./web/img -maxdepth 1 -name "*.png" -printf "%f\n" | ${xargs} -n 1 sh -c '${pngquant} --force --strip --quality 0-20 --speed 1 ./web/img/$0 -o ./web/dist/img/$0'
-      '';
       "go:codegen".exec = "${templ} generate";
       "js:icu" = {
         exec = ''
@@ -66,14 +57,12 @@
       "dist:clean".exec = "rm -rf ./web/dist";
       "dist:build".after = [
         "js:bundle"
-        "img:dist"
         "go:codegen"
       ];
       "go:lint" = {
         exec = "${golangci-lint} run";
         after = [
           "go:codegen"
-          "img:dist"
         ];
       };
     };

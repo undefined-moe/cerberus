@@ -6,7 +6,7 @@
     "browserslist": "last 2 versions, not dead, > 0.2%",
     "type": "module",
     "scripts": {
-        "build": "vite build && node js/collect_assets.mjs dist/index.html dist/index.json && rm dist/index.html"
+        "build": "vite build"
     },
     "dependencies": {
         "@messageformat/convert": "^1.0.0",
@@ -19,6 +19,7 @@
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.1.7",
-        "vite": "^6.3.5"
+        "vite": "^6.3.5",
+        "vite-plugin-imagemin": "^0.6.1"
     }
 }
