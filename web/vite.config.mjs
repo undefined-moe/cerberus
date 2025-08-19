@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
-import { glob } from 'glob'
 import viteImagemin from 'vite-plugin-imagemin'
 
 export default defineConfig({
