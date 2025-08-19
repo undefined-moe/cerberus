@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -161,18 +160,12 @@ func setupRequestID(r *http.Request) *http.Request {
 }
 
 func setupManifest(r *http.Request) *http.Request {
-	rawAssets, err := web.Content.ReadFile("dist/.vite/manifest.json")
+	manifest, err := web.LoadManifest()
 	if err != nil {
 		panic(err)
 	}
 
-	var assets web.Manifest
-	err = json.Unmarshal(rawAssets, &assets)
-	if err != nil {
-		panic(err)
-	}
-
-	return r.WithContext(context.WithValue(r.Context(), web.ManifestCtxKey, assets))
+	return r.WithContext(context.WithValue(r.Context(), web.ManifestCtxKey, manifest))
 }
 
 func renderTemplate(w http.ResponseWriter, r *http.Request, c *core.Config, baseURL string, header string, child templ.Component, opts ...func(*templ.ComponentHandler)) error {
