@@ -1,7 +1,7 @@
 # I know I should split this into zh-Hans and zh-Hant, but @messageformat/convert only supports CLDR plural categories
 zh:
   challenge:
-    title: "验证您不是机器人"
+    title: "验证您是真人"
     calculating: "正在进行浏览器检查..."
     difficulty_speed: "难度：%{difficulty}，速度：%{speed}kH/s"
     taking_longer: "验证时间超出预期，请勿刷新页面"
@@ -23,13 +23,13 @@ zh:
     browser_config_or_bug: "可能是浏览器配置问题，也可能是我们的系统出现了异常"
     ip_blocked: "由于检测到可疑活动，您的 IP 地址或本地网络已被封禁"
     wait_before_retry: "请稍后再试，某些情况下可能需要等待数小时"
-    what_should_i_do: "我应该怎么做？"
+    what_should_i_do: "我该怎么办？"
     must_enable_js: "请启用 JavaScript 以继续访问"
     apologize_please_enable_js: >-
-      您的浏览器通过设置或扩展程序禁用了 JavaScript。我们对此造成的不便深表歉意，但请重新启用 JavaScript 以继续访问。
+      您的浏览器关闭了 JavaScript，这可能是由于设置或插件导致的。您需要重新启用 JavaScript 才能继续访问，抱歉给您带来不便。
     do_not_reload_too_often: >-
-      不用担心 - 您可以尝试在几秒后刷新页面重试。但请尽量不要频繁刷新，因为这可能导致您的 IP 被封禁。
-    contact_us: "如有问题，请通过 %{mail} 联系我们。请附上下方显示的 request ID，以便我们进行排查。"
+      别担心，您可以等几秒钟后刷新重试。但请尽量不要频繁刷新，不然这可能会导致您的 IP 被封禁。
+    contact_us: "如有问题，请发邮件到 %{mail} 联系我们。随信请附上下方显示的 Request ID，以便我们进行排查。"
   footer:
     author: "由 %{sjtug} 开发的 %{cerberus} 提供保护"
     upstream: "灵感来源于 🇨🇦 %{techaro} 开发的 %{anubis}"
