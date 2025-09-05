@@ -1,5 +1,5 @@
 {
-	auto_https off
+	auto_https disable_redirects
 	cerberus {
 		difficulty 12
 		max_pending 128
@@ -16,7 +16,7 @@
 	}
 }
 
-localhost:9693 {
+https://localhost:9693 {
 	encode
 
 	handle_path /.cerberus/* {

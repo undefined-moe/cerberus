@@ -81,6 +81,7 @@ export default defineConfig({
     cwd: path.resolve(import.meta.dirname, '..'),
     url: 'https://localhost:9693',
     ignoreHTTPSErrors: true,
+    timeout: 120000,
     reuseExistingServer: !process.env.CI,
     gracefulShutdown: {
       signal: 'SIGINT',
