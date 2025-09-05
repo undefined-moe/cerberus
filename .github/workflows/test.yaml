@@ -45,3 +45,8 @@ jobs:
           devenv tasks run dist:build --mode before
       - name: Test
         run: devenv test
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: web/playwright-report/
