@@ -1,6 +1,12 @@
 package web
 
-import "encoding/json"
+import (
+	_ "embed"
+	"encoding/json"
+)
+
+//go:embed dist/.vite/manifest.json
+var manifestContent []byte
 
 type Asset struct {
 	File string `json:"file"`
@@ -9,13 +15,8 @@ type Asset struct {
 type Manifest map[string]Asset
 
 func LoadManifest() (Manifest, error) {
-	rawAssets, err := Content.ReadFile("dist/.vite/manifest.json")
-	if err != nil {
-		return nil, err
-	}
-
 	var manifest Manifest
-	err = json.Unmarshal(rawAssets, &manifest)
+	err := json.Unmarshal(manifestContent, &manifest)
 	if err != nil {
 		return nil, err
 	}

@@ -3,8 +3,8 @@ package directives
 import (
 	"context"
 	"crypto/ed25519"
+	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -80,6 +80,26 @@ func blake3sum(text string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+// blake3Prf calculates the PRF output for a given challenge prefix and nonce.
+//
+// The expected prefix is 64 bytes of hex-encoded blake3 hash.
+// The nonce is a 64-bit integer (word ordering is swapped to accomodate JS number mantissa limits).
+func blake3Prf(prefix string, nonce uint64) (string, error) {
+	hash := blake3.New()
+	_, err := hash.WriteString(prefix)
+	if err != nil {
+		return "", err
+	}
+	var nonceBytes [8]byte
+	swappedNonce := (nonce << 32) | (nonce >> 32)
+	binary.LittleEndian.PutUint64(nonceBytes[:], swappedNonce)
+	_, err = hash.Write(nonceBytes[:])
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
 func challengeFor(r *http.Request, c *core.Instance) (string, error) {
 	fp := c.GetFingerprint()
 
@@ -120,7 +140,7 @@ func respondFailure(w http.ResponseWriter, r *http.Request, c *core.Config, msg 
 			web.Error(
 				i18n.T(r.Context(), "error.ip_blocked"),
 				i18n.T(r.Context(), "error.wait_before_retry"),
-				c.Mail,
+				"",
 			),
 			templ.WithStatus(status),
 		)
@@ -130,9 +150,9 @@ func respondFailure(w http.ResponseWriter, r *http.Request, c *core.Config, msg 
 	return renderTemplate(w, r, c, baseURL,
 		i18n.T(r.Context(), "error.error_occurred"),
 		web.Error(
-			msg,
+			i18n.T(r.Context(), "error.server_error"),
 			i18n.T(r.Context(), "error.browser_config_or_bug"),
-			c.Mail,
+			i18n.T(r.Context(), "error.error_details", i18n.M{"error": msg}),
 		),
 		templ.WithStatus(status),
 	)
@@ -161,26 +181,24 @@ func setupRequestID(r *http.Request) *http.Request {
 }
 
 func setupManifest(r *http.Request) *http.Request {
-	rawAssets, err := web.Content.ReadFile("dist/.vite/manifest.json")
+	manifest, err := web.LoadManifest()
 	if err != nil {
 		panic(err)
 	}
 
-	var assets web.Manifest
-	err = json.Unmarshal(rawAssets, &assets)
-	if err != nil {
-		panic(err)
-	}
-
-	return r.WithContext(context.WithValue(r.Context(), web.ManifestCtxKey, assets))
+	return r.WithContext(context.WithValue(r.Context(), web.ManifestCtxKey, manifest))
 }
 
 func renderTemplate(w http.ResponseWriter, r *http.Request, c *core.Config, baseURL string, header string, child templ.Component, opts ...func(*templ.ComponentHandler)) error {
 	ctx := templ.WithChildren(
 		context.WithValue(
-			context.WithValue(r.Context(), web.BaseURLCtxKey, baseURL),
-			web.VersionCtxKey,
-			core.Version,
+			context.WithValue(
+				context.WithValue(r.Context(), web.BaseURLCtxKey, baseURL),
+				web.VersionCtxKey,
+				core.Version,
+			),
+			web.MailCtxKey,
+			c.Mail,
 		),
 		child,
 	)

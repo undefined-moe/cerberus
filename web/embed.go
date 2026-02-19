@@ -4,5 +4,5 @@ import (
 	"embed"
 )
 
-//go:embed dist dist/.vite
+//go:embed dist
 var Content embed.FS

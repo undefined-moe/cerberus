@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -88,7 +89,7 @@ func (e *Endpoint) answerHandle(w http.ResponseWriter, r *http.Request) error {
 		e.logger.Info("solution is empty")
 		return respondFailure(w, r, &c.Config, "solution is empty", false, http.StatusBadRequest, ".")
 	}
-	solution, err := strconv.Atoi(solutionStr)
+	solution, err := strconv.ParseUint(solutionStr, 10, 64)
 	if err != nil {
 		e.logger.Debug("solution is not a integer", zap.Error(err))
 		return respondFailure(w, r, &c.Config, "solution is not a integer", false, http.StatusBadRequest, ".")
@@ -109,7 +110,13 @@ func (e *Endpoint) answerHandle(w http.ResponseWriter, r *http.Request) error {
 		return respondFailure(w, r, &c.Config, "signature mismatch", false, http.StatusForbidden, ".")
 	}
 
-	answer, err := blake3sum(fmt.Sprintf("%s|%d|%d|%s|%d", challenge, nonce, ts, signature, solution))
+	saltStr, err := blake3sum(fmt.Sprintf("%s|%d|%d|%s|", challenge, nonce, ts, signature))
+	if err != nil {
+		e.logger.Error("failed to calculate salt", zap.Error(err))
+		return err
+	}
+
+	answer, err := blake3Prf(saltStr, solution)
 	if err != nil {
 		e.logger.Error("failed to calculate answer", zap.Error(err))
 		return err
@@ -194,11 +201,19 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request, _ caddyhttp
 		return err
 	}
 
+	c := e.instance
+
+	if ipBlock, err := ipblock.NewIPBlock(net.ParseIP(getClientIP(r)), c.PrefixCfg); err == nil {
+		caddyhttp.SetVar(r.Context(), core.VarIPBlock, ipBlock)
+		if c.ContainsBlocklist(ipBlock) {
+			e.logger.Debug("IP is blocked", zap.String("ip", ipBlock.ToIPNet(c.PrefixCfg).String()))
+			return respondFailure(w, r, &c.Config, "", true, http.StatusForbidden, ".")
+		}
+	}
+
 	if tryServeFile(w, r) {
 		return nil
 	}
-
-	c := e.instance
 
 	path := strings.TrimSuffix(r.URL.Path, "/")
 	if path == "/answer" && r.Method == http.MethodPost {
